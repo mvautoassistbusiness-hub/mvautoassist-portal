@@ -7,6 +7,10 @@ export const metadata: Metadata = {
   title: 'Pricing · MVAutoAssist Admin',
 };
 
+// TODO (Week 3 cleanup): Add "+ New price tier" input for admin to define new amounts.
+// Currently the page only toggles EXISTING tiers — if all tiers are deleted,
+// there's no UI to add new ones back. Backup workaround: insert directly via Supabase SQL.
+
 export default async function PricingPage() {
   const supabase = await createClient();
 
