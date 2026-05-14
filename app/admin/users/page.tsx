@@ -93,8 +93,11 @@ export default async function UsersPage() {
             </p>
           </div>
         </div>
-        {/* Placeholder — modal wired in Week 3 */}
-        <button className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 transition-colors">
+        {/* New user — coming in a future release */}
+        <button
+          title="Coming soon"
+          className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-semibold opacity-60 cursor-not-allowed"
+        >
           <Plus className="w-4 h-4" />
           New user
         </button>
@@ -189,9 +192,12 @@ export default async function UsersPage() {
                           )}
                         </td>
 
-                        {/* Edit — placeholder */}
+                        {/* Edit — coming in a future release */}
                         <td className="px-6 py-4 text-right">
-                          <button className="text-xs font-semibold text-slate-900 hover:underline">
+                          <button
+                            title="Coming soon"
+                            className="text-xs font-semibold text-stone-400 opacity-60 cursor-not-allowed"
+                          >
                             Edit
                           </button>
                         </td>

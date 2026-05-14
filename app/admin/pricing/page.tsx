@@ -7,9 +7,11 @@ export const metadata: Metadata = {
   title: 'Pricing · MVAutoAssist Admin',
 };
 
-// TODO (Week 3 cleanup): Add "+ New price tier" input for admin to define new amounts.
-// Currently the page only toggles EXISTING tiers — if all tiers are deleted,
-// there's no UI to add new ones back. Backup workaround: insert directly via Supabase SQL.
+// Company-wide catalog of allowed RSA price points.
+// These are fixed business constants — not derived from the DB.
+// Per-dealer assignments are stored in price_tiers; this list drives the toggle UI.
+// TODO (Phase 6): Add a "+ Custom price" input per dealer row for off-catalog amounts.
+const DEFAULT_TIERS = [1200, 1500, 1800, 2200, 2500];
 
 export default async function PricingPage() {
   const supabase = await createClient();
@@ -34,10 +36,7 @@ export default async function PricingPage() {
   if (e1) console.error('[PricingPage] dealers:', e1);
   if (e2) console.error('[PricingPage] tiers:', e2);
 
-  // All distinct amounts across all tiers — the global price universe shown as pills
-  // and used as the toggle options for each dealer row.
-  const allPrices = [...new Set((tierRows ?? []).map(t => Number(t.amount)))]
-    .sort((a, b) => a - b);
+  // Only the price_tiers query is needed now — DEFAULT_TIERS drives the pill UI.
 
   // Per-dealer amounts map
   const tiersByUser = new Map<string, number[]>();
@@ -85,18 +84,14 @@ export default async function PricingPage() {
               <p className="text-sm text-stone-500">Available price points across the platform</p>
             </div>
             <div className="sm:ml-auto flex gap-2 flex-wrap">
-              {allPrices.length > 0 ? (
-                allPrices.map(p => (
-                  <div
-                    key={p}
-                    className="px-3 py-1.5 rounded-lg bg-slate-900 text-white text-sm font-semibold"
-                  >
-                    ₹{p.toLocaleString('en-IN')}
-                  </div>
-                ))
-              ) : (
-                <span className="text-sm text-stone-400">No price tiers configured yet</span>
-              )}
+              {DEFAULT_TIERS.map(p => (
+                <div
+                  key={p}
+                  className="px-3 py-1.5 rounded-lg bg-slate-900 text-white text-sm font-semibold"
+                >
+                  ₹{p.toLocaleString('en-IN')}
+                </div>
+              ))}
             </div>
           </div>
 
@@ -110,7 +105,8 @@ export default async function PricingPage() {
         </div>
 
         {/* Per-user assignments — client component owns toggle interactivity */}
-        <PricingAssignments dealers={dealers} allPrices={allPrices} />
+        {/* PricingAssignments always shows the full DEFAULT_TIERS catalog for every dealer */}
+        <PricingAssignments dealers={dealers} allPrices={DEFAULT_TIERS} />
 
       </div>
     </>

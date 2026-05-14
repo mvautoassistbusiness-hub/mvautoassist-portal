@@ -7,7 +7,7 @@ import {
   Shield, LayoutDashboard, FileText, Users,
   IndianRupee, LogOut, Menu, X,
 } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
+import { signOutUser } from '@/lib/auth/signOut';
 
 const NAV = [
   { href: '/admin/dashboard',    label: 'Dashboard',    icon: LayoutDashboard },
@@ -26,8 +26,7 @@ export default function AdminSidebar({ fullName }: { fullName: string }) {
   const router = useRouter();
 
   async function signOut() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
+    await signOutUser();
     router.push('/login');
     router.refresh();
   }
@@ -51,12 +50,8 @@ export default function AdminSidebar({ fullName }: { fullName: string }) {
         />
       )}
 
-      {/* Sidebar — dark navy, matches demo exactly */}
-      {/* DIAGNOSTIC: inline style forces background independent of Tailwind */}
-      <aside
-        className={`${ASIDE_BASE} ${open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
-        style={{ backgroundColor: '#0f172a' }}
-      >
+      {/* Sidebar */}
+      <aside className={`${ASIDE_BASE} ${open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
 
         {/* Brand header */}
         <div className="p-6 border-b border-white/10 flex items-center justify-between">

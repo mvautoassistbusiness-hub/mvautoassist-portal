@@ -1,6 +1,7 @@
 'use client';
 
 import { useOptimistic, useTransition, useState } from 'react';
+import Link from 'next/link';
 import { Search, Download, CheckCircle2, X, ChevronRight, FileText } from 'lucide-react';
 import { approveCertificate, rejectCertificate } from '@/app/admin/certificates/actions';
 import StatusBadge from '@/components/StatusBadge';
@@ -98,8 +99,11 @@ export default function CertificatesTable({ certs }: { certs: CertRow[] }) {
             </p>
           </div>
         </div>
-        {/* Export — placeholder, no logic yet */}
-        <button className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 transition-colors">
+        {/* Export — coming in a future release */}
+        <button
+          title="Coming soon"
+          className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-semibold opacity-60 cursor-not-allowed"
+        >
           <Download className="w-4 h-4" />
           Export
         </button>
@@ -229,12 +233,16 @@ export default function CertificatesTable({ certs }: { certs: CertRow[] }) {
                               </button>
                             </>
                           )}
-                          <button
+                          {/* TODO (Phase 6): /cert/[id] placeholder page lands users on a "coming soon"
+                              view. Real preview built in Week 4. */}
+                          <Link
+                            href={`/cert/${c.id}`}
+                            prefetch={false}
                             className="p-1.5 rounded hover:bg-stone-100 transition-colors"
-                            title="View"
+                            title="View certificate"
                           >
                             <ChevronRight className="w-4 h-4 text-stone-400" />
-                          </button>
+                          </Link>
                         </div>
                       </td>
                     </tr>

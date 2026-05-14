@@ -4,21 +4,21 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Shield, FileText, Plus, LogOut, Menu, X } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
+import { signOutUser } from '@/lib/auth/signOut';
 
 const NAV = [
   { href: '/agent/certificates', label: 'My Certificates', icon: FileText },
-  { href: '/agent/create',       label: 'Create New',      icon: Plus },
+  { href: '/agent/certificates/new', label: 'Create New', icon: Plus },
 ];
 
 const ASIDE_BASE =
   'fixed lg:static inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white flex flex-col shrink-0 transform transition-transform duration-200';
 
 export default function AgentSidebar({
-  fullName,
+  name,
   location,
 }: {
-  fullName: string;
+  name: string;
   location: string | null;
 }) {
   const [open, setOpen] = useState(false);
@@ -26,8 +26,7 @@ export default function AgentSidebar({
   const router   = useRouter();
 
   async function signOut() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
+    await signOutUser();
     router.push('/login');
     router.refresh();
   }
@@ -52,8 +51,7 @@ export default function AgentSidebar({
       )}
 
       {/* Sidebar */}
-      <aside className={`${ASIDE_BASE} ${open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
-             style={{ backgroundColor: '#0f172a' }}>
+      <aside className={`${ASIDE_BASE} ${open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
 
         {/* Brand */}
         <div className="p-6 border-b border-white/10 flex items-center justify-between">
@@ -104,10 +102,10 @@ export default function AgentSidebar({
         <div className="p-3 border-t border-white/10">
           <div className="flex items-center gap-3 p-2 rounded-lg mb-2">
             <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-400 to-red-500 flex items-center justify-center font-bold text-sm shrink-0">
-              {fullName.charAt(0).toUpperCase()}
+              {name.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-semibold truncate">{fullName}</div>
+              <div className="text-sm font-semibold truncate">{name}</div>
               <div className="text-[10px] text-stone-400 uppercase tracking-wider">
                 Dealer{location ? ` · ${location}` : ''}
               </div>

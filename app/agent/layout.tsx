@@ -1,6 +1,11 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import AgentSidebar from '@/components/agent/AgentSidebar';
+
+export const metadata: Metadata = {
+  title: 'MVAutoAssist Dealer',
+};
 
 export default async function AgentLayout({
   children,
@@ -18,14 +23,14 @@ export default async function AgentLayout({
     .eq('id', user.id)
     .single();
 
-  if (!profile || profile.role !== 'dealer') redirect('/login');
+  if (!profile || profile.role !== 'dealer') redirect('/admin/dashboard');
 
   return (
     <div
       style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
       className="flex min-h-screen bg-stone-50 text-slate-900"
     >
-      <AgentSidebar fullName={profile.full_name} location={profile.location} />
+      <AgentSidebar name={profile.full_name} location={profile.location} />
       <main className="flex-1 min-w-0 overflow-x-hidden">{children}</main>
     </div>
   );

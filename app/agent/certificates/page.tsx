@@ -9,6 +9,12 @@ export const metadata: Metadata = {
   title: 'My Certificates · MVAutoAssist',
 };
 
+// TODO (Phase 6): Wrap certificate cards in <Link href={`/cert/${cert.id}`}>
+// Currently cards are visual only; clicking does nothing. Phase 6 will:
+//   1. Build app/cert/[id]/page.tsx placeholder
+//   2. Make these cards navigate to it
+//   3. Mirror the change on /admin/certificates and /admin/dashboard recent rows
+
 type CertCard = {
   id: string;
   cert_number: string;
@@ -63,7 +69,7 @@ export default async function AgentCertificatesPage() {
           </div>
         </div>
         <Link
-          href="/agent/create"
+          href="/agent/certificates/new"
           className="flex items-center gap-2 px-4 py-2 rounded-lg text-white text-sm font-semibold transition-opacity hover:opacity-90"
           style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #dc2626 100%)' }}
         >
@@ -82,7 +88,7 @@ export default async function AgentCertificatesPage() {
               Create your first RSA certificate to get started.
             </p>
             <Link
-              href="/agent/create"
+              href="/agent/certificates/new"
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 transition-colors"
             >
               <Plus className="w-4 h-4" />

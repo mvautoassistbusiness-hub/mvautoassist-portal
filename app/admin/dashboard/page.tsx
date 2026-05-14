@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import {
   FileText, CheckCircle2, Clock, IndianRupee,
   TrendingUp, Car, Bike, ArrowUpRight, ChevronRight,
@@ -241,9 +242,12 @@ export default async function AdminDashboardPage() {
                   Last {recent.length} issuance{recent.length !== 1 ? 's' : ''}
                 </p>
               </div>
-              <button className="text-xs font-semibold text-slate-900 hover:underline flex items-center gap-1">
+              <Link
+                href="/admin/certificates"
+                className="text-xs font-semibold text-slate-900 hover:underline flex items-center gap-1"
+              >
                 View all <ArrowUpRight className="w-3 h-3" />
-              </button>
+              </Link>
             </div>
 
             {recent.length === 0 ? (
@@ -256,9 +260,12 @@ export default async function AdminDashboardPage() {
               </div>
             ) : (
               <div className="divide-y divide-stone-100">
+                {/* TODO (Phase 6): /cert/[id] placeholder page lands on "coming soon". Real preview built in Week 4. */}
                 {recent.map(c => (
-                  <div
+                  <Link
                     key={c.id}
+                    href={`/cert/${c.id}`}
+                    prefetch={false}
                     className="flex items-center gap-4 px-6 py-4 hover:bg-stone-50 transition-colors"
                   >
                     <div className="w-9 h-9 rounded-lg bg-stone-100 flex items-center justify-center shrink-0">
@@ -282,7 +289,7 @@ export default async function AdminDashboardPage() {
                       <StatusBadge status={c.status} />
                     </div>
                     <ChevronRight className="w-4 h-4 text-stone-300 shrink-0" />
-                  </div>
+                  </Link>
                 ))}
               </div>
             )}
