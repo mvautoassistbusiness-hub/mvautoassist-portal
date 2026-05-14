@@ -2,11 +2,11 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Bike, Car } from 'lucide-react';
 import Field from '@/components/agent/Field';
 
 // ─── form state ───────────────────────────────────────────────────────────────
-// All DB column names used verbatim. Step 2 + 3 fields are stubs — they have
+// All DB column names used verbatim. Step 3 fields are stubs — they have
 // sensible defaults now so the type is stable across phases.
 
 type FormState = {
@@ -16,7 +16,7 @@ type FormState = {
   customer_mobile:  string;
   customer_email:   string;
   customer_address: string;
-  // Step 2 — vehicle info (populated in Phase 4)
+  // Step 2 — vehicle info
   vehicle_type:       string;
   registration_no:    string;
   make_model:         string;
@@ -43,6 +43,9 @@ const INITIAL: FormState = {
   start_date: '', end_date: '', insurance_amount: '', rsa_amount: '',
 };
 
+const VEHICLE_TYPES = ['Two Wheeler', 'Four Wheeler'] as const;
+const FUEL_TYPES    = ['Petrol', 'Diesel', 'Electric', 'CNG'] as const;
+
 // ─── validation ───────────────────────────────────────────────────────────────
 
 function validateStep1(f: FormState): Errors {
@@ -51,6 +54,33 @@ function validateStep1(f: FormState): Errors {
     e.customer_name = 'Name is required';
   if (!/^\d{10}$/.test(f.customer_mobile))
     e.customer_mobile = 'Enter a valid 10-digit mobile';
+  return e;
+}
+
+function validateStep2(f: FormState): Errors {
+  const e: Errors = {};
+  const currentYear = new Date().getFullYear();
+
+  if (!(VEHICLE_TYPES as readonly string[]).includes(f.vehicle_type))
+    e.vehicle_type = 'Select a vehicle type';
+
+  if (!f.make_model.trim() || f.make_model.trim().length < 2)
+    e.make_model = 'Vehicle make and model required';
+
+  const yr = parseInt(f.manufacturing_year, 10);
+  if (!f.manufacturing_year || isNaN(yr) || yr < 1990 || yr > currentYear)
+    e.manufacturing_year = `Enter a valid manufacturing year (1990–${currentYear})`;
+
+  if (!f.engine_no.trim() || f.engine_no.trim().length < 3)
+    e.engine_no = 'Engine number required';
+
+  // chassis_no is required — Vilas rule 3 (search includes chassis_no)
+  if (!f.chassis_no.trim() || f.chassis_no.trim().length < 3)
+    e.chassis_no = 'Chassis number required';
+
+  if (!(FUEL_TYPES as readonly string[]).includes(f.fuel_type))
+    e.fuel_type = 'Select a fuel type';
+
   return e;
 }
 
@@ -63,13 +93,16 @@ export default function NewCertificateWizard() {
 
   function update<K extends keyof FormState>(key: K, val: FormState[K]) {
     setForm(f => ({ ...f, [key]: val }));
-    // clear error for this field on change
     if (errors[key]) setErrors(e => ({ ...e, [key]: undefined }));
   }
 
   function handleContinue() {
     if (step === 1) {
       const errs = validateStep1(form);
+      if (Object.keys(errs).length) { setErrors(errs); return; }
+    }
+    if (step === 2) {
+      const errs = validateStep2(form);
       if (Object.keys(errs).length) { setErrors(errs); return; }
     }
     setErrors({});
@@ -87,7 +120,6 @@ export default function NewCertificateWizard() {
       {/* ── Top bar ─────────────────────────────────────────────────────────── */}
       <div className="bg-white border-b border-stone-200 px-6 lg:px-10 py-5 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          {/* Mobile spacer so back arrow clears the hamburger button */}
           <div className="lg:hidden w-9 shrink-0" />
           <Link
             href="/agent/certificates"
@@ -125,14 +157,11 @@ export default function NewCertificateWizard() {
       {/* ── Form area ───────────────────────────────────────────────────────── */}
       <div className="max-w-3xl mx-auto p-6 lg:p-10">
 
-        {/* Step 1 — Customer details */}
+        {/* ── Step 1: Customer details ─────────────────────────────────────── */}
         {step === 1 && (
           <div className="space-y-6">
             <div>
-              <h2
-                style={{ fontFamily: "'Instrument Serif', serif" }}
-                className="text-2xl mb-1"
-              >
+              <h2 style={{ fontFamily: "'Instrument Serif', serif" }} className="text-2xl mb-1">
                 Customer details
               </h2>
               <p className="text-sm text-stone-500">Who is this certificate for?</p>
@@ -179,32 +208,134 @@ export default function NewCertificateWizard() {
           </div>
         )}
 
-        {/* Step 2 placeholder — vehicle info (Phase 4) */}
+        {/* ── Step 2: Vehicle information ──────────────────────────────────── */}
         {step === 2 && (
           <div className="space-y-6">
             <div>
-              <h2
-                style={{ fontFamily: "'Instrument Serif', serif" }}
-                className="text-2xl mb-1"
-              >
+              <h2 style={{ fontFamily: "'Instrument Serif', serif" }} className="text-2xl mb-1">
                 Vehicle information
               </h2>
-              <p className="text-sm text-stone-500">Details of the vehicle being covered</p>
+              <p className="text-sm text-stone-500">Details of the vehicle being insured</p>
             </div>
-            <div className="bg-white rounded-2xl border border-stone-200 p-10 text-center text-stone-400 text-sm">
-              Step 2 — Vehicle information coming in Phase 4
+
+            <div className="bg-white rounded-2xl border border-stone-200 p-6 space-y-4">
+
+              {/* Vehicle type — large toggle buttons */}
+              <div>
+                <label className="block text-xs font-semibold tracking-wider uppercase text-stone-500 mb-2">
+                  Vehicle type
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {VEHICLE_TYPES.map(vt => (
+                    <button
+                      key={vt}
+                      type="button"
+                      onClick={() => update('vehicle_type', vt)}
+                      className={`p-4 rounded-lg border-2 flex items-center gap-3 transition-all ${
+                        form.vehicle_type === vt
+                          ? 'border-slate-900 bg-stone-50'
+                          : 'border-stone-200 hover:border-stone-300'
+                      }`}
+                    >
+                      {vt === 'Two Wheeler'
+                        ? <Bike className="w-5 h-5" />
+                        : <Car  className="w-5 h-5" />}
+                      <span className="font-semibold text-sm">{vt}</span>
+                    </button>
+                  ))}
+                </div>
+                {errors.vehicle_type && (
+                  <p className="mt-1.5 text-xs text-red-600 font-medium">{errors.vehicle_type}</p>
+                )}
+              </div>
+
+              {/* Registration no + Make & Model */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field
+                  label="Registration no"
+                  value={form.registration_no}
+                  onChange={v => update('registration_no', v)}
+                  placeholder="MH09 AB 1234 or 'New'"
+                />
+                <Field
+                  label="Make & Model"
+                  value={form.make_model}
+                  onChange={v => update('make_model', v)}
+                  placeholder="HONDA CB350RS"
+                  error={errors.make_model}
+                />
+              </div>
+
+              {/* Variant + Manufacturing year */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field
+                  label="Variant"
+                  value={form.variant}
+                  onChange={v => update('variant', v)}
+                  placeholder="DLX PRO DUAL TONE"
+                />
+                <Field
+                  label="Manufacturing year"
+                  value={form.manufacturing_year}
+                  onChange={v => update('manufacturing_year', v)}
+                  placeholder="2025"
+                  error={errors.manufacturing_year}
+                />
+              </div>
+
+              {/* Engine no + Chassis no (both required) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field
+                  label="Engine no"
+                  value={form.engine_no}
+                  onChange={v => update('engine_no', v)}
+                  placeholder="NC58EA3025933"
+                  error={errors.engine_no}
+                />
+                <Field
+                  label="Chassis no"
+                  value={form.chassis_no}
+                  onChange={v => update('chassis_no', v)}
+                  placeholder="ME4NC681JSA006238"
+                  error={errors.chassis_no}
+                />
+              </div>
+
+              {/* Fuel type — pill row */}
+              <div>
+                <label className="block text-xs font-semibold tracking-wider uppercase text-stone-500 mb-2">
+                  Fuel type
+                </label>
+                <div className="flex gap-2 flex-wrap">
+                  {FUEL_TYPES.map(ft => (
+                    <button
+                      key={ft}
+                      type="button"
+                      onClick={() => update('fuel_type', ft)}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                        form.fuel_type === ft
+                          ? 'bg-slate-900 text-white'
+                          : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                      }`}
+                    >
+                      {ft}
+                    </button>
+                  ))}
+                </div>
+                {errors.fuel_type && (
+                  <p className="mt-1.5 text-xs text-red-600 font-medium">{errors.fuel_type}</p>
+                )}
+              </div>
+
             </div>
           </div>
         )}
 
-        {/* Step 3 placeholder — pricing (Phase 5) */}
+        {/* ── Step 3: Plan & pricing placeholder (Phase 5) ─────────────────── */}
         {step === 3 && (
           <div className="space-y-6">
             <div>
-              <h2
-                style={{ fontFamily: "'Instrument Serif', serif" }}
-                className="text-2xl mb-1"
-              >
+              <h2 style={{ fontFamily: "'Instrument Serif', serif" }} className="text-2xl mb-1">
                 Plan &amp; pricing
               </h2>
               <p className="text-sm text-stone-500">Select coverage period and premium</p>
