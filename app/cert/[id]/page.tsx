@@ -3,11 +3,31 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { ChevronRight } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
-import StatusBadge from '@/components/StatusBadge';
+import CertificatePreview from '@/components/cert/CertificatePreview';
+import type { CertData, AgentData } from '@/components/cert/CertificatePreview';
 
-export const metadata: Metadata = {
-  title: 'Certificate · MVAutoAssist',
-};
+// ─── dynamic metadata ─────────────────────────────────────────────────────────
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('certificates')
+    .select('cert_number')
+    .eq('id', id)
+    .single();
+  return {
+    title: data?.cert_number
+      ? `Certificate ${data.cert_number} · MVAutoAssist`
+      : 'Certificate · MVAutoAssist',
+  };
+}
+
+// ─── page ─────────────────────────────────────────────────────────────────────
 
 export default async function CertPage({
   params,
@@ -17,10 +37,11 @@ export default async function CertPage({
   const { id } = await params;
   const supabase = await createClient();
 
+  // ── Auth guard ───────────────────────────────────────────────────────────
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  // Role determines the Back link destination
+  // ── Current user's role (determines Back link) ───────────────────────────
   const { data: profile } = await supabase
     .from('users')
     .select('role')
@@ -31,97 +52,92 @@ export default async function CertPage({
     ? '/admin/certificates'
     : '/agent/certificates';
 
-  // RLS automatically scopes this: dealer only sees own certs, admin sees all
-  const { data: cert } = await supabase
+  // ── Fetch certificate (RLS: dealer sees own, admin sees all) ─────────────
+  const { data: certRaw } = await supabase
     .from('certificates')
-    .select('id, cert_number, customer_name, make_model, vehicle_type, status, total_amount')
+    .select(`
+      id, cert_number,
+      customer_name, customer_dob, customer_mobile, customer_email, customer_address,
+      vehicle_type, registration_no, make_model, variant,
+      engine_no, chassis_no, fuel_type, manufacturing_year,
+      start_date, end_date,
+      insurance_amount, rsa_amount, total_amount,
+      status, agent_id
+    `)
     .eq('id', id)
     .single();
 
-  return (
-    <div
-      style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-      className="min-h-screen bg-stone-50 text-slate-900 flex flex-col"
-    >
-      {/* Minimal top bar */}
-      <div className="bg-white border-b border-stone-200 px-6 py-4">
-        <Link
-          href={backHref}
-          className="inline-flex items-center gap-2 text-sm font-semibold text-stone-600 hover:text-slate-900 transition-colors"
-        >
-          <ChevronRight className="w-4 h-4 rotate-180" />
-          Back
-        </Link>
-      </div>
-
-      {/* Content */}
-      <main className="flex-1 flex items-start justify-center px-6 py-16">
-        {!cert ? (
-          /* ── Not found ───────────────────────────────────────────────── */
+  // ── Not found ─────────────────────────────────────────────────────────────
+  if (!certRaw) {
+    return (
+      <div
+        style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+        className="min-h-screen bg-stone-50 flex flex-col"
+      >
+        <div className="bg-white border-b border-stone-200 px-6 py-4">
+          <Link
+            href={backHref}
+            className="inline-flex items-center gap-2 text-sm font-semibold text-stone-600 hover:text-slate-900 transition-colors"
+          >
+            <ChevronRight className="w-4 h-4 rotate-180" />
+            Back
+          </Link>
+        </div>
+        <main className="flex-1 flex items-start justify-center px-6 py-16">
           <div className="w-full max-w-lg bg-white border border-stone-200 rounded-2xl shadow-sm p-10 text-center">
             <p className="text-sm font-semibold text-stone-400 mb-2">Certificate not found</p>
             <p className="text-xs text-stone-400">
               This certificate doesn&apos;t exist or you don&apos;t have access to it.
             </p>
           </div>
-        ) : (
-          /* ── Placeholder card ────────────────────────────────────────── */
-          <div className="w-full max-w-lg bg-white border border-stone-200 rounded-2xl shadow-sm p-10">
+        </main>
+      </div>
+    );
+  }
 
-            {/* Heading */}
-            <h1
-              style={{ fontFamily: "'Instrument Serif', serif" }}
-              className="text-4xl tracking-tight mb-1"
-            >
-              Certificate Preview
-            </h1>
-            <p className="text-sm text-stone-500 mb-8">
-              Coming in Week 4 — full PDF view
-            </p>
+  const cert = certRaw as unknown as CertData;
 
-            {/* Cert details */}
-            <div className="space-y-4">
-              <div>
-                <p className="text-xs font-semibold tracking-wider uppercase text-stone-400 mb-1">
-                  Certificate no.
-                </p>
-                <p
-                  style={{ fontFamily: "'JetBrains Mono', monospace" }}
-                  className="text-sm font-semibold"
-                >
-                  {cert.cert_number}
-                </p>
-              </div>
+  // ── Fetch issuing agent's profile ─────────────────────────────────────────
+  const { data: agentRaw } = await supabase
+    .from('users')
+    .select('full_name, email, location')
+    .eq('id', cert.agent_id)
+    .single();
 
-              <div>
-                <p className="text-xs font-semibold tracking-wider uppercase text-stone-400 mb-1">
-                  Customer
-                </p>
-                <p className="font-semibold">{cert.customer_name}</p>
-                <p className="text-sm text-stone-500">{cert.make_model} · {cert.vehicle_type}</p>
-              </div>
+  const agent: AgentData = agentRaw ?? {
+    full_name: 'Unknown Agent',
+    email:    '',
+    location: null,
+  };
 
-              <div className="flex items-center justify-between pt-4 border-t border-stone-100">
-                <div>
-                  <p className="text-xs font-semibold tracking-wider uppercase text-stone-400 mb-1">
-                    Status
-                  </p>
-                  <StatusBadge status={cert.status} />
-                </div>
-                <div className="text-right">
-                  <p className="text-xs font-semibold tracking-wider uppercase text-stone-400 mb-1">
-                    Total
-                  </p>
-                  <p className="font-bold text-lg">
-                    ₹{(cert.total_amount ?? 0).toLocaleString('en-IN')}
-                  </p>
-                </div>
-              </div>
-            </div>
+  // ── Helpline lookup: per-dealer override → global default (Vilas rule 4) ──
+  let helpline = '';
 
-          </div>
-        )}
-      </main>
-    </div>
+  // 1. Try dealer-specific override
+  const { data: dealerLine } = await supabase
+    .from('helpline_settings')
+    .select('helpline_number')
+    .eq('user_id', cert.agent_id)
+    .maybeSingle();
+
+  if (dealerLine?.helpline_number) {
+    helpline = dealerLine.helpline_number;
+  } else {
+    // 2. Fall back to global default
+    const { data: defaultLine } = await supabase
+      .from('helpline_settings')
+      .select('helpline_number')
+      .eq('is_default', true)
+      .maybeSingle();
+    helpline = defaultLine?.helpline_number ?? '—';
+  }
+
+  return (
+    <CertificatePreview
+      cert={cert}
+      agent={agent}
+      helpline={helpline}
+      backHref={backHref}
+    />
   );
 }

@@ -99,9 +99,10 @@ export default async function AgentCertificatesPage() {
           /* Card grid — matches demo layout */
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {certs.map(c => (
-              <div
+              <Link
                 key={c.id}
-                className="bg-white rounded-2xl border border-stone-200 p-5 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-default"
+                href={`/cert/${c.id}`}
+                className="block bg-white rounded-2xl border border-stone-200 p-5 hover:shadow-md hover:-translate-y-0.5 transition-all"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="w-10 h-10 rounded-lg bg-stone-100 flex items-center justify-center shrink-0">
@@ -134,7 +135,7 @@ export default async function AgentCertificatesPage() {
                     ₹{(c.total_amount ?? 0).toLocaleString('en-IN')}
                   </div>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         )}
