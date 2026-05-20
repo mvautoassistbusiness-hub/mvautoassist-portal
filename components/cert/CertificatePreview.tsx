@@ -36,16 +36,16 @@ export type AgentData = {
   location: string | null;
 };
 
-// ─── coverage rows ────────────────────────────────────────────────────────────
+// ─── coverage data ────────────────────────────────────────────────────────────
 
 const COVERAGES = [
-  { id: 1, title: 'Battery Check Up & Jump Start',      desc: 'A Technician to be arranged for Jumpstart',                                                                                      val: 'Yes' },
-  { id: 2, title: 'Flat Tyre',                           desc: 'Arrange For a Technician to Repair the Puncture Tyre. The Cost of Puncture repair and all incidental charges to be borne by Customer on actual basis', val: 'Yes' },
-  { id: 3, title: 'Fuel Arrangement Assistance*',        desc: 'Arrange For a Fuel Delivery in Case Vehicle Is Out of Fuel. Fuel Cost on actual basis payable by Customer',                     val: 'Yes' },
-  { id: 4, title: 'Relay of Urgent Messages',            desc: "Pass On Message to Rider's Friends & Family",                                                                                    val: 'Yes' },
-  { id: 5, title: 'Vehicle Breakdown Phone Support',     desc: 'Guiding The Rider On Phone about Vehicle Related Problem',                                                                       val: 'Yes' },
-  { id: 6, title: 'Towing Assistance',                   desc: 'To and fro upto-15 kms from the breakdown spot (one towing)*',                                                                   val: 'Yes' },
-  { id: 7, title: 'Number of Services',                  desc: 'during a plan',                                                                                                                  val: '1'   },
+  { id: 1, title: 'Battery Check Up & Jump Start',  desc: 'A Technician to be arranged for Jumpstart',                                                                                                                    val: 'Yes' },
+  { id: 2, title: 'Flat Tyre',                       desc: 'Arrange For a Technician to Repair the Puncture Tyre. The Cost of Puncture repair and all incidental charges to be borne by Customer on actual basis',       val: 'Yes' },
+  { id: 3, title: 'Fuel Arrangement Assistance*',    desc: 'Arrange For a Fuel Delivery in Case Vehicle Is Out of Fuel. Fuel Cost on actual basis payable by Customer',                                                   val: 'Yes' },
+  { id: 4, title: 'Relay of Urgent Messages',        desc: "Pass On Message to Rider's Friends & Family",                                                                                                                 val: 'Yes' },
+  { id: 5, title: 'Vehicle Breakdown Phone Support', desc: 'Guiding The Rider On Phone about Vehicle Related Problem',                                                                                                     val: 'Yes' },
+  { id: 6, title: 'Towing Assistance',               desc: 'To and fro upto-15 kms from the breakdown spot (one towing)*',                                                                                                val: 'Yes' },
+  { id: 7, title: 'Number of Services',              desc: 'during a plan',                                                                                                                                                val: '1'   },
 ] as const;
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -60,22 +60,27 @@ function fmtAmt(n: number) {
   return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2 }).format(n);
 }
 
-// ─── shared inline styles ─────────────────────────────────────────────────────
+// ─── tailwind class constants ─────────────────────────────────────────────────
 
-const BORDER = '1px solid #d1d5db';          // gray-300
-const TD     = { border: BORDER, padding: '6px 10px', verticalAlign: 'top' as const };
-const LBL: React.CSSProperties = { fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.07em', color: '#6b7280', marginBottom: '2px' };
-const VAL: React.CSSProperties = { fontSize: '11px', fontWeight: 600, color: '#0f172a' };
-const VAL_MONO: React.CSSProperties = { ...VAL, fontFamily: "'JetBrains Mono', monospace" };
-const BANNER: React.CSSProperties = { ...TD, background: '#292524', color: '#fff', textAlign: 'center', fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '6px 10px' };
-const HEADER_ROW: React.CSSProperties = { ...TD, background: '#f5f5f4', fontSize: '9px', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#44403c' };
+// Outer table — body cell
+const TD  = 'border border-stone-300 px-3 py-2 align-top';
+// Section banner (full-width dark row)
+const BNR = 'border border-stone-300 bg-stone-800 text-white text-center font-semibold py-1.5 text-xs uppercase tracking-wider';
+// Label line inside a cell
+const LBL = 'text-[10px] uppercase tracking-wider text-stone-500 leading-none mb-0.5';
+// Value line inside a cell
+const VAL = 'text-sm font-semibold text-stone-900 leading-snug';
+// Inner-table header cell (coverages / RSA breakup)
+const ITH = 'bg-stone-100 px-3 py-2 text-[10px] uppercase tracking-wider font-semibold text-stone-700 border border-stone-300 text-left';
+// Inner-table body cell
+const ITC = 'px-3 py-2 text-xs border border-stone-300 align-top';
 
-function Cell({ label, value, mono }: { label: string; value?: string | null; mono?: boolean }) {
+function Field({ label, value, mono }: { label: string; value?: string | null; mono?: boolean }) {
   return (
-    <div>
-      <div style={LBL}>{label}</div>
-      <div style={mono ? VAL_MONO : VAL}>{value ?? '—'}</div>
-    </div>
+    <>
+      <div className={LBL}>{label}</div>
+      <div className={`${VAL}${mono ? ' font-mono' : ''}`}>{value ?? '—'}</div>
+    </>
   );
 }
 
@@ -83,12 +88,12 @@ function Cell({ label, value, mono }: { label: string; value?: string | null; mo
 
 type Props = { cert: CertData; agent: AgentData; helpline: string; backHref: string };
 
-export default function CertificatePreview({ cert, agent, helpline, backHref }: Props) {
+export default function CertificatePreview({ cert, helpline, backHref }: Props) {
   return (
     <div style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}
          className="min-h-screen bg-stone-200 p-4 sm:p-8 print:bg-white print:p-0">
 
-      {/* ── Action bar — print:hidden ─────────────────────────────────────── */}
+      {/* ── Action bar — hidden on print ──────────────────────────────────── */}
       <div className="max-w-4xl mx-auto mb-3 flex flex-wrap items-center gap-2 justify-between print:hidden">
         <Link href={backHref}
               className="flex items-center gap-2 text-sm font-semibold bg-white px-4 py-2 rounded-lg border border-stone-300 hover:bg-stone-50 transition-colors">
@@ -108,53 +113,60 @@ export default function CertificatePreview({ cert, agent, helpline, backHref }: 
 
       {/* ── Certificate document ──────────────────────────────────────────── */}
       <div className="max-w-4xl mx-auto bg-white shadow-xl print:shadow-none print:max-w-full">
-        <table style={{ borderCollapse: 'collapse', width: '100%' }}>
-          {/* 4 equal columns: coverages use them as 4 distinct; 2-col sections use colSpan=2 per side */}
+
+        {/*
+          Outer table: 2 equal columns (50 / 50).
+          The coverages and RSA sections each use colSpan=2 + a nested <table>
+          so their internal column widths (Sl.No ~6%, Benefits ~22%,
+          Description ~57%, Applicable ~15%) don't distort the 50/50 grid.
+          The nested tables' outer cells supply all visual borders; the wrapping
+          <td> carries padding:0 and no border so border-collapse on the outer
+          table produces clean 1 px joints above and below each section.
+        */}
+        <table className="w-full border-collapse">
           <colgroup>
-            <col style={{ width: '25%' }} />
-            <col style={{ width: '25%' }} />
-            <col style={{ width: '25%' }} />
-            <col style={{ width: '25%' }} />
+            <col style={{ width: '50%' }} />
+            <col style={{ width: '50%' }} />
           </colgroup>
           <tbody>
 
-            {/* ── ROW A: Logo | Cert number ─────────────────────────────── */}
+            {/* ── ROW 1 : Logo | Tax Invoice heading ───────────────────── */}
             <tr>
-              <td colSpan={2} style={TD}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div style={{ width: 40, height: 40, borderRadius: 6, flexShrink: 0, background: 'linear-gradient(135deg,#f59e0b,#dc2626)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <td className={TD}>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-md shrink-0 flex items-center justify-center"
+                       style={{ background: 'linear-gradient(135deg,#f59e0b,#dc2626)' }}>
                     <Shield className="w-5 h-5 text-white" strokeWidth={2.5} />
                   </div>
                   <div>
-                    <div style={{ fontWeight: 800, fontSize: '14px', letterSpacing: '-0.01em', color: '#0f172a' }}>MVAUTOASSIST</div>
-                    <div style={{ fontSize: '8px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#9ca3af' }}>Service Certificate Portal</div>
+                    <div className="font-black text-sm tracking-tight text-stone-900">MVAUTOASSIST</div>
+                    <div className="text-[8px] uppercase tracking-widest text-stone-400">Service Certificate Portal</div>
                   </div>
                 </div>
               </td>
-              <td colSpan={2} style={{ ...TD, textAlign: 'center' }}>
-                <div style={{ fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#6b7280', marginBottom: '4px' }}>
-                  Tax Invoice cum Certificate Number :
-                </div>
-                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: '15px', color: '#0f172a' }}>
+              <td className={`${TD} text-center`}>
+                <div className={LBL}>Tax Invoice cum Certificate Number</div>
+                <div className="font-mono font-black text-xl text-stone-900 tracking-tight mt-0.5">
                   {cert.cert_number}
                 </div>
               </td>
             </tr>
 
-            {/* ── ROW B: Issuer | Contact ───────────────────────────────── */}
+            {/* ── ROW 2 : Issuer | RSA contact ─────────────────────────── */}
             <tr>
-              <td colSpan={2} style={TD}>
-                <div style={LBL}>Certificate issuer &amp; Servicing Office :</div>
-                <div style={{ ...VAL, fontSize: '12px' }}>SHREEVARDHAN SERVICES</div>
-                <div style={{ fontSize: '10px', color: '#4b5563', marginTop: '2px', lineHeight: 1.5 }}>
-                  RS No. 226/A/1, Unit No. 2, Kamabe Turf,<br />Thane, Kolhapur – 416012
+              <td className={TD}>
+                <div className={LBL}>Certificate issuer &amp; Servicing Office :</div>
+                <div className="text-sm font-bold text-stone-900">SHREEVARDHAN SERVICES</div>
+                <div className="text-xs text-stone-600 mt-0.5 leading-relaxed">
+                  RS No. 226/A/1, Unit No. 2, Kamabe Turf,<br />
+                  Thane, Kolhapur – 416012
                 </div>
               </td>
-              <td colSpan={2} style={TD}>
-                <div style={LBL}>For Road Side Assistance :</div>
-                <div style={{ fontSize: '10px', color: '#374151', lineHeight: 1.7 }}>
+              <td className={TD}>
+                <div className={LBL}>For Road Side Assistance :</div>
+                <div className="text-xs text-stone-600 leading-relaxed">
                   Please contact on toll free no :{' '}
-                  <span style={{ fontWeight: 700, color: '#0f172a', fontSize: '12px' }}>{helpline}</span><br />
+                  <span className="font-bold text-stone-900 text-sm">{helpline}</span><br />
                   Email : care@mvautoassist.com<br />
                   Web : www.mvautoassist.com
                 </div>
@@ -163,93 +175,113 @@ export default function CertificatePreview({ cert, agent, helpline, backHref }: 
 
             {/* ── Customer info ─────────────────────────────────────────── */}
             <tr>
-              <td colSpan={2} style={TD}><Cell label="Tax Invoice Cum Certificate Number" value={cert.cert_number} mono /></td>
-              <td colSpan={2} style={TD}><Cell label="Certificate Start Date" value={fmtYMD(cert.start_date, '00:00')} /></td>
+              <td className={TD}><Field label="Tax Invoice Cum Certificate Number" value={cert.cert_number} mono /></td>
+              <td className={TD}><Field label="Certificate Start Date"              value={fmtYMD(cert.start_date, '00:00')} /></td>
             </tr>
             <tr>
-              <td colSpan={2} style={TD}><Cell label="Name of the Certificate Holder" value={cert.customer_name} /></td>
-              <td colSpan={2} style={TD}><Cell label="Certificate End Date" value={fmtDMY(cert.end_date, '23:59')} /></td>
+              <td className={TD}><Field label="Name of the Certificate Holder" value={cert.customer_name} /></td>
+              <td className={TD}><Field label="Certificate End Date"            value={fmtDMY(cert.end_date, '23:59')} /></td>
             </tr>
             <tr>
-              <td colSpan={2} style={TD}><Cell label="Customer DOB" value={fmtDMY(cert.customer_dob)} /></td>
-              <td colSpan={2} style={TD}><Cell label="Customer Mobile No" value={cert.customer_mobile} /></td>
+              <td className={TD}><Field label="Customer DOB"       value={fmtDMY(cert.customer_dob)} /></td>
+              <td className={TD}><Field label="Customer Mobile No" value={cert.customer_mobile} /></td>
             </tr>
             <tr>
-              <td colSpan={4} style={TD}><Cell label="Customer Address" value={cert.customer_address} /></td>
+              <td colSpan={2} className={TD}><Field label="Customer Address"  value={cert.customer_address} /></td>
             </tr>
             <tr>
-              <td colSpan={4} style={TD}><Cell label="Customer Email ID" value={cert.customer_email} /></td>
-            </tr>
-
-            {/* ── Vehicle Details banner ────────────────────────────────── */}
-            <tr>
-              <td colSpan={4} style={BANNER}>Vehicle Details</td>
+              <td colSpan={2} className={TD}><Field label="Customer Email ID" value={cert.customer_email} /></td>
             </tr>
 
+            {/* ── Vehicle Details ────────────────────────────────────────── */}
+            <tr><td colSpan={2} className={BNR}>Vehicle Details</td></tr>
             <tr>
-              <td colSpan={2} style={TD}><Cell label="Registration No"    value={cert.registration_no || 'New'} /></td>
-              <td colSpan={2} style={TD}><Cell label="Vehicle Type"        value={cert.vehicle_type} /></td>
+              <td className={TD}><Field label="Registration No" value={cert.registration_no || 'New'} /></td>
+              <td className={TD}><Field label="Vehicle Type"    value={cert.vehicle_type} /></td>
             </tr>
             <tr>
-              <td colSpan={2} style={TD}><Cell label="Make and Model"      value={cert.make_model} /></td>
-              <td colSpan={2} style={TD}><Cell label="Variant"             value={cert.variant} /></td>
+              <td className={TD}><Field label="Make and Model" value={cert.make_model} /></td>
+              <td className={TD}><Field label="Variant"        value={cert.variant} /></td>
             </tr>
             <tr>
-              <td colSpan={2} style={TD}><Cell label="Engine No"           value={cert.engine_no}  mono /></td>
-              <td colSpan={2} style={TD}><Cell label="Chassis No"          value={cert.chassis_no} mono /></td>
+              <td className={TD}><Field label="Engine No"  value={cert.engine_no}  mono /></td>
+              <td className={TD}><Field label="Chassis No" value={cert.chassis_no} mono /></td>
             </tr>
             <tr>
-              <td colSpan={2} style={TD}><Cell label="Fuel Type"           value={cert.fuel_type} /></td>
-              <td colSpan={2} style={TD}><Cell label="Manufacturing Year"  value={cert.manufacturing_year?.toString()} /></td>
+              <td className={TD}><Field label="Fuel Type"          value={cert.fuel_type} /></td>
+              <td className={TD}><Field label="Manufacturing Year" value={cert.manufacturing_year?.toString()} /></td>
             </tr>
 
-            {/* ── Coverages banner ──────────────────────────────────────── */}
+            {/* ── Coverages ─────────────────────────────────────────────── */}
             <tr>
-              <td colSpan={4} style={BANNER}>
+              <td colSpan={2} className={BNR}>
                 Coverages of Road Side Assistance — Toll free No. {helpline}
               </td>
             </tr>
 
-            {/* Coverages table header */}
+            {/* Nested table — gives the 4 coverage columns their own widths */}
             <tr>
-              <td style={{ ...HEADER_ROW, textAlign: 'center', width: '6%' }}>Sl. No.</td>
-              <td style={HEADER_ROW}>Featured Benefits</td>
-              <td style={{ ...HEADER_ROW, width: '44%' }}>Description</td>
-              <td style={{ ...HEADER_ROW, textAlign: 'center', width: '12%' }}>Applicable</td>
+              <td colSpan={2} style={{ padding: 0 }}>
+                <table className="w-full border-collapse">
+                  <colgroup>
+                    <col style={{ width: '6%' }} />
+                    <col style={{ width: '22%' }} />
+                    <col style={{ width: '57%' }} />
+                    <col style={{ width: '15%' }} />
+                  </colgroup>
+                  <thead>
+                    <tr>
+                      <th className={`${ITH} text-center`}>Sl. No.</th>
+                      <th className={ITH}>Featured Benefits</th>
+                      <th className={ITH}>Description</th>
+                      <th className={`${ITH} text-center`}>Applicable</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {COVERAGES.map((row, i) => (
+                      <tr key={row.id} className={i % 2 === 1 ? 'bg-stone-50' : 'bg-white'}>
+                        <td className={`${ITC} text-center text-stone-500`}>{row.id}</td>
+                        <td className={`${ITC} font-semibold`}>{row.title}</td>
+                        <td className={`${ITC} text-stone-600 leading-relaxed`}>{row.desc}</td>
+                        <td className={`${ITC} text-center font-bold`}>{row.val}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </td>
             </tr>
 
-            {COVERAGES.map((row, i) => (
-              <tr key={row.id} style={{ background: i % 2 === 1 ? '#fafaf9' : '#fff' }}>
-                <td style={{ ...TD, textAlign: 'center', color: '#6b7280' }}>{row.id}</td>
-                <td style={{ ...TD, fontWeight: 600 }}>{row.title}</td>
-                <td style={{ ...TD, color: '#374151' }}>{row.desc}</td>
-                <td style={{ ...TD, textAlign: 'center', fontWeight: 700 }}>{row.val}</td>
-              </tr>
-            ))}
+            {/* ── RSA Premium Breakup ────────────────────────────────────── */}
+            <tr><td colSpan={2} className={BNR}>RSA Premium Breakup</td></tr>
 
-            {/* ── RSA Premium Breakup banner ────────────────────────────── */}
+            {/* Nested table — Vilas rule 2: insurance + RSA + total, no GST */}
             <tr>
-              <td colSpan={4} style={BANNER}>RSA Premium Breakup</td>
-            </tr>
-
-            {/* Breakup header — Vilas rule 2: insurance + RSA + total, no GST */}
-            <tr>
-              <td style={HEADER_ROW}>Plan Name</td>
-              <td style={{ ...HEADER_ROW, textAlign: 'right' }}>Insurance Premium</td>
-              <td style={{ ...HEADER_ROW, textAlign: 'right' }}>RSA Premium</td>
-              <td style={{ ...HEADER_ROW, textAlign: 'right' }}>Total Premium</td>
-            </tr>
-            <tr>
-              <td style={{ ...TD, fontWeight: 600 }}>MVAutoAssist RSA</td>
-              <td style={{ ...TD, textAlign: 'right' }}>{fmtAmt(cert.insurance_amount)}</td>
-              <td style={{ ...TD, textAlign: 'right' }}>{fmtAmt(cert.rsa_amount)}</td>
-              <td style={{ ...TD, textAlign: 'right', fontWeight: 700, fontSize: '13px' }}>{fmtAmt(cert.total_amount)}</td>
+              <td colSpan={2} style={{ padding: 0 }}>
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr>
+                      <th className={ITH}>Plan Name</th>
+                      <th className={`${ITH} text-right`}>Insurance Premium</th>
+                      <th className={`${ITH} text-right`}>RSA Premium</th>
+                      <th className={`${ITH} text-right`}>Total Premium</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className={`${ITC} font-semibold`}>MVAutoAssist RSA</td>
+                      <td className={`${ITC} text-right`}>{fmtAmt(cert.insurance_amount)}</td>
+                      <td className={`${ITC} text-right`}>{fmtAmt(cert.rsa_amount)}</td>
+                      <td className={`${ITC} text-right font-bold text-sm`}>{fmtAmt(cert.total_amount)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </td>
             </tr>
 
             {/* ── Special Conditions ────────────────────────────────────── */}
             <tr>
-              <td colSpan={4} style={{ ...TD, fontSize: '9px', color: '#6b7280', lineHeight: 1.6 }}>
-                <strong style={{ color: '#374151' }}>Special Conditions (applicable to all coverages):</strong>{' '}
+              <td colSpan={2} className="border border-stone-300 px-3 py-2 text-[10px] text-stone-500 leading-relaxed">
+                <strong className="text-stone-700">Special Conditions (applicable to all coverages):</strong>{' '}
                 (a) All additional expenses regarding replacement of a part, additional Fuel and any other service
                 which does not form a part of the standard services provided would be on chargeable basis to the
                 Certificate holder. (b) This Certificate is valid subject to realisation of the payment and is
