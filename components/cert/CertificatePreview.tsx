@@ -59,19 +59,19 @@ function fmtAmt(n: number) {
 }
 
 const BD = '1px solid #ddd';
-const C: React.CSSProperties = { border: BD, padding: '8px 6px', verticalAlign: 'top' };
+const C: React.CSSProperties = { border: BD, padding: '6px 6px', verticalAlign: 'top' };
 const TH: React.CSSProperties = { ...C, fontWeight: 700, width: 200, backgroundColor: '#f9fafb', textAlign: 'left' };
-const BNR: React.CSSProperties = { border: BD, padding: '6px 10px', backgroundColor: '#0f172a14', fontSize: 13, fontWeight: 600, color: '#0f172a' };
-const ITH: React.CSSProperties = { border: BD, padding: '7px 6px', backgroundColor: '#f3f4f6', fontWeight: 700, fontSize: 13, verticalAlign: 'top', textAlign: 'left' };
-const ITC: React.CSSProperties = { border: BD, padding: '7px 6px', verticalAlign: 'top', fontSize: 13 };
+const BNR: React.CSSProperties = { border: BD, padding: '5px 9px', backgroundColor: '#0f172a14', fontSize: 12, fontWeight: 700, color: '#0f172a' };
+const ITH: React.CSSProperties = { border: BD, padding: '5px 6px', backgroundColor: '#f3f4f6', fontWeight: 700, fontSize: 12, verticalAlign: 'top', textAlign: 'left' };
+const ITC: React.CSSProperties = { border: BD, padding: '5px 6px', verticalAlign: 'top', fontSize: 12 };
 
 type Props = { cert: CertData; agent: AgentData; helpline: string; backHref: string };
 
 export default function CertificatePreview({ cert, helpline, backHref }: Props) {
   return (
     <div
-      style={{ fontFamily: 'Arial, Helvetica, sans-serif', fontSize: 14, color: '#111' }}
-      className="min-h-screen bg-stone-100 p-4 sm:p-8 print:bg-white print:p-0"
+      style={{ fontFamily: 'Arial, Helvetica, sans-serif', fontSize: 13, color: '#111' }}
+      className="cert-print-root min-h-screen bg-stone-100 p-4 sm:p-8 print:bg-white print:p-0"
     >
       <div className="max-w-[1000px] mx-auto mb-3 flex items-center gap-2 justify-between print:hidden">
         <Link
@@ -96,24 +96,26 @@ export default function CertificatePreview({ cert, helpline, backHref }: Props) 
         </div>
       </div>
 
-      <div className="max-w-[1000px] mx-auto bg-white shadow-sm rounded-lg p-4">
-        <table style={{ borderCollapse: 'collapse', width: '100%', border: BD }}>
+      <div className="cert-document max-w-[960px] mx-auto bg-white shadow-sm rounded-lg p-4">
+        <h1 className="cert-title">Tax Invoice / RSA Certificate</h1>
+
+        <table className="cert-main-table" style={{ borderCollapse: 'collapse', width: '100%', border: BD }}>
           <tbody>
             <tr>
               <td colSpan={2} style={C}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                  <div style={{ width: 40, height: 40, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg,#f59e0b,#dc2626)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 6 }}>
+                  <div style={{ width: 36, height: 36, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg,#f59e0b,#dc2626)' }}>
                     <Shield className="w-6 h-6 text-white" strokeWidth={2.5} />
                   </div>
                   <div>
-                    <div style={{ fontWeight: 700, fontSize: 17, color: '#0f172a' }}>MVAUTOASSIST</div>
+                    <div style={{ fontWeight: 700, fontSize: 16, color: '#0f172a' }}>MVAUTOASSIST</div>
                     <div style={{ fontSize: 10, color: '#9ca3af', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Service Certificate Portal</div>
                   </div>
                 </div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#166534' }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#166534' }}>
                   Toll Free: {helpline}
                 </div>
-                <div style={{ fontSize: 11, color: '#57534e', marginTop: 6, lineHeight: 1.6 }}>
+                <div style={{ fontSize: 10.5, color: '#57534e', marginTop: 4, lineHeight: 1.45 }}>
                   <strong style={{ fontWeight: 600, color: '#374151' }}>SHREEVARDHAN SERVICES</strong><br />
                   RS No. 226/A/1, Unit No. 2, Kamabe Turf,<br />
                   Thane, Kolhapur - 416012
@@ -124,14 +126,14 @@ export default function CertificatePreview({ cert, helpline, backHref }: Props) 
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
                   Bill To
                 </div>
-                <div style={{ fontWeight: 700, fontSize: 16, color: '#0f172a' }}>{cert.customer_name}</div>
+                <div style={{ fontWeight: 700, fontSize: 15, color: '#0f172a' }}>{cert.customer_name}</div>
                 {cert.customer_address && (
-                  <div style={{ fontSize: 12, color: '#57534e', marginTop: 4, lineHeight: 1.6, maxWidth: 320, marginLeft: 'auto' }}>
+                  <div style={{ fontSize: 11, color: '#57534e', marginTop: 3, lineHeight: 1.45, maxWidth: 340, marginLeft: 'auto' }}>
                     {cert.customer_address}
                   </div>
                 )}
-                <div style={{ fontSize: 13, color: '#374151', marginTop: 4, fontWeight: 600 }}>{cert.customer_mobile}</div>
-                {cert.customer_email && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>{cert.customer_email}</div>}
+                <div style={{ fontSize: 12, color: '#374151', marginTop: 3, fontWeight: 600 }}>{cert.customer_mobile}</div>
+                {cert.customer_email && <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{cert.customer_email}</div>}
               </td>
             </tr>
 
@@ -236,11 +238,11 @@ export default function CertificatePreview({ cert, helpline, backHref }: Props) 
           </tbody>
         </table>
 
-        <p className="text-xs text-stone-600 italic mt-4 px-2">
+        <p className="cert-conditions text-xs text-stone-600 italic mt-3 px-2">
           Special conditions (applicable to all coverages): (a) All additional expenses regarding replacement of a part, additional Fuel and any other service which does not form a part of the standard services provided would be on chargeable basis to the Certificate holder. (b) This Certificate is valid subject to realisation of the payment and is effective from the Payment realisation date or certificate issue date, whichever is later.
         </p>
 
-        <div className="text-[11px] text-stone-500 text-center mt-2">
+        <div className="cert-footer text-[11px] text-stone-500 text-center mt-2">
           This is a computer generated certificate and hence signature is not required.
         </div>
       </div>
