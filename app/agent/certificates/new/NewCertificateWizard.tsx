@@ -357,7 +357,7 @@ export default function NewCertificateWizard() {
                             ₹{t.toLocaleString('en-IN')}
                           </div>
                           <div className={`text-[10px] uppercase tracking-wider mt-1 ${selected ? 'opacity-70' : 'text-stone-400'}`}>
-                            GST incl.
+                            Assigned tier
                           </div>
                         </button>
                       );
