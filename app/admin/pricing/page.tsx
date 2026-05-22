@@ -29,30 +29,39 @@ export default async function PricingPage() {
 
     supabase
       .from('price_tiers')
-      .select('user_id, amount')
+      .select('user_id, amount, is_default')
       .order('amount', { ascending: true }),
   ]);
 
   if (e1) console.error('[PricingPage] dealers:', e1);
   if (e2) console.error('[PricingPage] tiers:', e2);
 
-  // Only the price_tiers query is needed now — DEFAULT_TIERS drives the pill UI.
-
-  // Per-dealer amounts map
-  const tiersByUser = new Map<string, number[]>();
+  // Per-dealer amounts + default map
+  const tiersByUser = new Map<string, { amounts: number[]; defaultAmount: number | null }>();
   (tierRows ?? []).forEach(t => {
     const amt = Number(t.amount);
     const existing = tiersByUser.get(t.user_id);
-    if (existing) existing.push(amt);
-    else tiersByUser.set(t.user_id, [amt]);
+    if (existing) {
+      existing.amounts.push(amt);
+      if (t.is_default) existing.defaultAmount = amt;
+    } else {
+      tiersByUser.set(t.user_id, {
+        amounts: [amt],
+        defaultAmount: t.is_default ? amt : null,
+      });
+    }
   });
 
-  const dealers: DealerWithPrices[] = (rawDealers ?? []).map(d => ({
-    id: d.id,
-    full_name: d.full_name,
-    location: d.location,
-    amounts: tiersByUser.get(d.id) ?? [],
-  }));
+  const dealers: DealerWithPrices[] = (rawDealers ?? []).map(d => {
+    const tiers = tiersByUser.get(d.id);
+    return {
+      id: d.id,
+      full_name: d.full_name,
+      location: d.location,
+      amounts: tiers?.amounts ?? [],
+      defaultAmount: tiers?.defaultAmount ?? null,
+    };
+  });
 
   return (
     <>

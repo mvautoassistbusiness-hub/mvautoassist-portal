@@ -2,7 +2,6 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
-import { createClient as createServiceClient } from '@supabase/supabase-js';
 
 // ─── shared form type ─────────────────────────────────────────────────────────
 // All fields are strings — matches what the wizard form sends.
@@ -31,7 +30,7 @@ export type CertFormData = {
 // ─── getDealerPriceTiers ──────────────────────────────────────────────────────
 
 export async function getDealerPriceTiers(): Promise<
-  { ok: true; tiers: number[] } | { ok: false; error: string }
+  { ok: true; tiers: { amount: number; is_default: boolean }[] } | { ok: false; error: string }
 > {
   try {
     const supabase = await createClient();
@@ -40,21 +39,24 @@ export async function getDealerPriceTiers(): Promise<
 
     const { data, error } = await supabase
       .from('price_tiers')
-      .select('amount')
+      .select('amount, is_default')
       .eq('user_id', user.id)
       .order('amount', { ascending: true });
 
     if (error) return { ok: false, error: error.message };
-    return { ok: true, tiers: (data ?? []).map(r => Number(r.amount)) };
+    return {
+      ok: true,
+      tiers: (data ?? []).map(r => ({
+        amount: Number(r.amount),
+        is_default: Boolean(r.is_default),
+      })),
+    };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Unknown error' };
   }
 }
 
 // ─── createCertificate ────────────────────────────────────────────────────────
-// TODO (post-launch): Replace with PostgreSQL sequence or advisory lock for true
-// concurrency safety. Two simultaneous submissions could generate the same
-// cert_number; the UNIQUE constraint causes one INSERT to fail — dealer retries.
 
 export async function createCertificate(form: CertFormData): Promise<
   { ok: true; certId: string; certNumber: string } | { ok: false; error: string }
@@ -120,92 +122,49 @@ export async function createCertificate(form: CertFormData): Promise<
     if (!tierCheck || tierCheck.length === 0)
       return { ok: false, error: 'Selected RSA amount is not assigned to your account' };
 
-    // ── cert_number generation + INSERT with retry on race condition ─────
-    // Service role client needed to SELECT across all dealers' cert_numbers.
-    const adminClient = createServiceClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { persistSession: false } }
-    );
-
-    const certYear   = new Date().getFullYear();
     const total_amount = insuranceAmt + rsaAmt;
 
-    // Retry up to 3 times on cert_number collision (23505 race condition).
-    // Each retry re-reads the current max, so it naturally advances past the collision.
-    // Random jitter (10–50 ms) staggers thundering-herd retries.
-    // TODO (post-launch): replace with a PostgreSQL sequence for zero-collision guarantee.
-    const MAX_RETRIES = 3;
+    const { data: certNumber, error: rpcError } = await supabase.rpc('generate_cert_number');
+    if (rpcError || !certNumber) {
+      return { ok: false, error: 'Failed to generate certificate number' };
+    }
 
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-      // Fresh SELECT on every attempt — picks up any cert_numbers written since last try
-      const { data: latestRows } = await adminClient
-        .from('certificates')
-        .select('cert_number')
-        .like('cert_number', `MV${certYear}%`)
-        .order('cert_number', { ascending: false })
-        .limit(1);
+    const { data: inserted, error: insertErr } = await supabase
+      .from('certificates')
+      .insert({
+        cert_number:        certNumber,
+        agent_id:           user.id,
+        status:             'pending',
+        customer_name:      form.customer_name.trim(),
+        customer_dob:       form.customer_dob || null,
+        customer_mobile:    form.customer_mobile,
+        customer_email:     form.customer_email.trim() || null,
+        customer_address:   form.customer_address.trim() || null,
+        vehicle_type:       form.vehicle_type,
+        registration_no:    form.registration_no.trim() || null,
+        make_model:         form.make_model.trim(),
+        variant:            form.variant.trim() || null,
+        engine_no:          form.engine_no.trim(),
+        chassis_no:         form.chassis_no.trim(),
+        fuel_type:          form.fuel_type,
+        manufacturing_year: mfgYear,
+        start_date:         form.start_date,
+        end_date:           form.end_date,
+        insurance_amount:   insuranceAmt,
+        rsa_amount:         rsaAmt,
+        total_amount,
+      })
+      .select('id, cert_number')
+      .single();
 
-      const lastSeq = latestRows?.[0]?.cert_number
-        ? parseInt(latestRows[0].cert_number.slice(-8), 10)
-        : 0;
-      const cert_number = `MV${certYear}${String(lastSeq + 1).padStart(8, '0')}`;
-
-      const { data: inserted, error: insertErr } = await supabase
-        .from('certificates')
-        .insert({
-          cert_number,
-          agent_id:           user.id,
-          status:             'pending',
-          customer_name:      form.customer_name.trim(),
-          customer_dob:       form.customer_dob || null,
-          customer_mobile:    form.customer_mobile,
-          customer_email:     form.customer_email.trim() || null,
-          customer_address:   form.customer_address.trim() || null,
-          vehicle_type:       form.vehicle_type,
-          registration_no:    form.registration_no.trim() || null,
-          make_model:         form.make_model.trim(),
-          variant:            form.variant.trim() || null,
-          engine_no:          form.engine_no.trim(),
-          chassis_no:         form.chassis_no.trim(),
-          fuel_type:          form.fuel_type,
-          manufacturing_year: mfgYear,
-          start_date:         form.start_date,
-          end_date:           form.end_date,
-          insurance_amount:   insuranceAmt,
-          rsa_amount:         rsaAmt,
-          total_amount,
-        })
-        .select('id, cert_number')
-        .single();
-
-      if (!insertErr && inserted) {
-        // Success — cert created
-        revalidatePath('/agent/certificates');
-        revalidatePath('/admin/certificates');
-        revalidatePath('/admin/dashboard');
-        return { ok: true, certId: inserted.id, certNumber: inserted.cert_number };
-      }
-
-      if (insertErr?.code === '23505') {
-        // UNIQUE violation — another request won the race; retry with fresh SELECT
-        if (attempt < MAX_RETRIES) {
-          await new Promise(r => setTimeout(r, 10 + Math.random() * 40));
-          continue;
-        }
-        // All retries exhausted
-        return {
-          ok: false,
-          error: 'Certificate submission is busy. Please try again in a moment.',
-        };
-      }
-
-      // Any other DB error — give up immediately
+    if (insertErr || !inserted) {
       return { ok: false, error: insertErr?.message ?? 'Certificate creation failed' };
     }
 
-    // Should be unreachable, but satisfies TypeScript
-    return { ok: false, error: 'Unexpected error during certificate creation' };
+    revalidatePath('/agent/certificates');
+    revalidatePath('/admin/certificates');
+    revalidatePath('/admin/dashboard');
+    return { ok: true, certId: inserted.id, certNumber: inserted.cert_number };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Unexpected error' };
   }

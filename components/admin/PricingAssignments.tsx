@@ -1,7 +1,13 @@
 'use client';
 
 import { useOptimistic, useTransition, useState } from 'react';
-import { addPriceTier, removePriceTier } from '@/app/admin/pricing/actions';
+import { Star } from 'lucide-react';
+import {
+  addPriceTier,
+  removePriceTier,
+  setDefaultPriceTier,
+  unsetDefaultPriceTier,
+} from '@/app/admin/pricing/actions';
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
@@ -9,7 +15,8 @@ export type DealerWithPrices = {
   id: string;
   full_name: string;
   location: string | null;
-  amounts: number[]; // currently assigned, sorted ascending
+  amounts: number[];
+  defaultAmount: number | null;
 };
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -34,6 +41,7 @@ export default function PricingAssignments({
 }) {
   const [, startTransition] = useTransition();
   const [pendingKey, setPendingKey] = useState<string | null>(null);
+  const [defaultPending, setDefaultPending] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
   // useOptimistic updates the dealer list immediately when a pill is toggled;
@@ -76,6 +84,25 @@ export default function PricingAssignments({
     });
   }
 
+  async function handleStar(dealerId: string, amount: number, isCurrentDefault: boolean) {
+    if (defaultPending !== null || pendingKey !== null) return;
+    setDefaultPending(`${dealerId}:${amount}`);
+    try {
+      const res = isCurrentDefault
+        ? await unsetDefaultPriceTier(dealerId)
+        : await setDefaultPriceTier(dealerId, amount);
+      if (res?.error) {
+        setToast(`Could not update default: ${res.error}`);
+        setTimeout(() => setToast(null), 4000);
+      }
+    } catch {
+      setToast('Default update failed. Please try again.');
+      setTimeout(() => setToast(null), 4000);
+    } finally {
+      setDefaultPending(null);
+    }
+  }
+
   return (
     <>
       <div className="bg-white rounded-2xl border border-stone-200 overflow-hidden">
@@ -109,30 +136,48 @@ export default function PricingAssignments({
                 {allPrices.length === 0 ? (
                   <p className="text-xs text-stone-400">No price tiers configured</p>
                 ) : (
-                  <div className="flex gap-2 flex-wrap">
+                  <div className="flex gap-2 flex-wrap items-center">
                     {allPrices.map(p => {
                       const active = d.amounts.includes(p);
                       const key = `${d.id}:${p}`;
                       const isThisPending = pendingKey === key;
+                      const isThisDefault = d.defaultAmount === p;
+                      const isStarPending = defaultPending === key;
 
                       return (
-                        <button
-                          key={p}
-                          onClick={() => toggle(d.id, p)}
-                          disabled={pendingKey !== null}
-                          title={active ? `Remove ₹${p} from ${d.full_name}` : `Assign ₹${p} to ${d.full_name}`}
-                          className={`
-                            px-3 py-1.5 rounded-lg text-xs font-semibold transition-all
-                            disabled:cursor-not-allowed
-                            ${isThisPending ? 'opacity-50 cursor-wait' : ''}
-                            ${active
-                              ? 'bg-slate-900 text-white hover:bg-slate-700 disabled:hover:bg-slate-900'
-                              : 'bg-stone-100 text-stone-400 hover:bg-stone-200 disabled:hover:bg-stone-100'
-                            }
-                          `}
-                        >
-                          ₹{p.toLocaleString('en-IN')}
-                        </button>
+                        <div key={p} className="flex items-center gap-0.5">
+                          <button
+                            onClick={() => toggle(d.id, p)}
+                            disabled={pendingKey !== null}
+                            title={active ? `Remove ₹${p} from ${d.full_name}` : `Assign ₹${p} to ${d.full_name}`}
+                            className={`
+                              px-3 py-1.5 rounded-lg text-xs font-semibold transition-all
+                              disabled:cursor-not-allowed
+                              ${isThisPending ? 'opacity-50 cursor-wait' : ''}
+                              ${active
+                                ? 'bg-slate-900 text-white hover:bg-slate-700 disabled:hover:bg-slate-900'
+                                : 'bg-stone-100 text-stone-400 hover:bg-stone-200 disabled:hover:bg-stone-100'
+                              }
+                            `}
+                          >
+                            ₹{p.toLocaleString('en-IN')}
+                          </button>
+                          {active && (
+                            <button
+                              onClick={() => handleStar(d.id, p, isThisDefault)}
+                              disabled={defaultPending !== null || pendingKey !== null}
+                              title={isThisDefault ? `Clear default for ${d.full_name}` : `Set ₹${p.toLocaleString('en-IN')} as default for ${d.full_name}`}
+                              className={`p-1 rounded transition-colors disabled:cursor-not-allowed ${
+                                isStarPending ? 'opacity-40 cursor-wait' : 'hover:bg-stone-100'
+                              }`}
+                            >
+                              <Star
+                                className={`w-3.5 h-3.5 ${isThisDefault ? 'text-amber-500' : 'text-stone-300'}`}
+                                fill={isThisDefault ? 'currentColor' : 'none'}
+                              />
+                            </button>
+                          )}
+                        </div>
                       );
                     })}
                   </div>

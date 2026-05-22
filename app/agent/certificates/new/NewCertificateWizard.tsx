@@ -68,7 +68,7 @@ function validateStep2(f: FormState): Errors {
   return e;
 }
 
-function validateStep3(f: FormState, tiers: number[]): Errors {
+function validateStep3(f: FormState, tiers: { amount: number; is_default: boolean }[]): Errors {
   const e: Errors = {};
   if (!f.start_date) e.start_date = 'Start date required';
   if (!f.end_date)   e.end_date   = 'End date required';
@@ -80,7 +80,7 @@ function validateStep3(f: FormState, tiers: number[]): Errors {
   const rsa = parseFloat(f.rsa_amount);
   if (!f.rsa_amount || isNaN(rsa) || rsa <= 0)
     e.rsa_amount = 'Select an RSA premium tier';
-  else if (!tiers.includes(rsa))
+  else if (!tiers.some(t => t.amount === rsa))
     e.rsa_amount = 'Selected tier is not assigned to your account';
   return e;
 }
@@ -95,7 +95,7 @@ export default function NewCertificateWizard() {
   const [errors, setErrors] = useState<Errors>({});
 
   // Step 3 — tier data
-  const [tiers,      setTiers]      = useState<number[] | null>(null); // null = loading
+  const [tiers,      setTiers]      = useState<{ amount: number; is_default: boolean }[] | null>(null); // null = loading
   const [tiersError, setTiersError] = useState<string | null>(null);
 
   // Step 3 — submission
@@ -105,8 +105,14 @@ export default function NewCertificateWizard() {
   // Prefetch dealer's price tiers on mount so Step 3 is ready immediately
   useEffect(() => {
     getDealerPriceTiers().then(res => {
-      if (res.ok) setTiers(res.tiers);
-      else { setTiersError(res.error); setTiers([]); }
+      if (res.ok) {
+        setTiers(res.tiers);
+        const def = res.tiers.find(t => t.is_default);
+        if (def) setForm(f => ({ ...f, rsa_amount: String(def.amount) }));
+      } else {
+        setTiersError(res.error);
+        setTiers([]);
+      }
     });
   }, []);
 
@@ -341,12 +347,12 @@ export default function NewCertificateWizard() {
                   </label>
                   <div className="grid grid-cols-3 gap-2">
                     {tiers.map(t => {
-                      const selected = parseFloat(form.rsa_amount) === t;
+                      const selected = parseFloat(form.rsa_amount) === t.amount;
                       return (
                         <button
-                          key={t}
+                          key={t.amount}
                           type="button"
-                          onClick={() => update('rsa_amount', String(t))}
+                          onClick={() => update('rsa_amount', String(t.amount))}
                           className={`p-4 rounded-lg border-2 transition-all ${
                             selected
                               ? 'border-slate-900 bg-slate-900 text-white'
@@ -354,7 +360,7 @@ export default function NewCertificateWizard() {
                           }`}
                         >
                           <div style={{ fontFamily: "'Instrument Serif', serif" }} className="text-2xl">
-                            ₹{t.toLocaleString('en-IN')}
+                            ₹{t.amount.toLocaleString('en-IN')}
                           </div>
                           <div className={`text-[10px] uppercase tracking-wider mt-1 ${selected ? 'opacity-70' : 'text-stone-400'}`}>
                             Assigned tier
