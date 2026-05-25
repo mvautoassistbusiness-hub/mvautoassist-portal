@@ -42,3 +42,5 @@ next-env.d.ts
 
 # secrets
 db_pass
+.verify-screenshots/
+verify-screenshots*.mjs
