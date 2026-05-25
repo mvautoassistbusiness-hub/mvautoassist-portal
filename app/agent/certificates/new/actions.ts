@@ -25,6 +25,8 @@ export type CertFormData = {
   end_date:         string;   // YYYY-MM-DD
   insurance_amount: string;   // numeric string
   rsa_amount:       string;   // numeric string
+  payment_method:   string;   // one of ALLOWED_PAYMENT_METHODS
+  payment_reference: string;  // optional free text
 };
 
 // ─── getDealerPriceTiers ──────────────────────────────────────────────────────
@@ -111,6 +113,10 @@ export async function createCertificate(form: CertFormData): Promise<
     if (isNaN(rsaAmt) || rsaAmt <= 0)
       return { ok: false, error: 'RSA premium must be selected' };
 
+    const ALLOWED_PAYMENT_METHODS = ['cash', 'upi', 'card', 'cheque', 'bank_transfer'] as const;
+    if (!ALLOWED_PAYMENT_METHODS.includes(form.payment_method as typeof ALLOWED_PAYMENT_METHODS[number]))
+      return { ok: false, error: 'Select a valid payment method' };
+
     // Re-query price_tiers — never trust the client's rsa_amount (Vilas rule 10)
     const { data: tierCheck } = await supabase
       .from('price_tiers')
@@ -153,6 +159,9 @@ export async function createCertificate(form: CertFormData): Promise<
         insurance_amount:   insuranceAmt,
         rsa_amount:         rsaAmt,
         total_amount,
+        payment_method:     form.payment_method,
+        payment_reference:  form.payment_reference.trim() || null,
+        payment_received:   false,
       })
       .select('id, cert_number')
       .single();

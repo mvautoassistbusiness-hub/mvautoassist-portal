@@ -33,10 +33,16 @@ const INITIAL: FormState = {
   start_date: todayISO(),
   end_date:   oneYearHenceISO(),
   insurance_amount: '', rsa_amount: '',
+  payment_method: '', payment_reference: '',
 };
 
 const VEHICLE_TYPES = ['Two Wheeler', 'Four Wheeler'] as const;
 const FUEL_TYPES    = ['Petrol', 'Diesel', 'Electric', 'CNG'] as const;
+
+const PAYMENT_METHODS = ['cash', 'upi', 'card', 'cheque', 'bank_transfer'] as const;
+const PAYMENT_LABELS: Record<string, string> = {
+  cash: 'Cash', upi: 'UPI', card: 'Card', cheque: 'Cheque', bank_transfer: 'Bank Transfer',
+};
 
 // ─── validation ───────────────────────────────────────────────────────────────
 
@@ -82,6 +88,8 @@ function validateStep3(f: FormState, tiers: { amount: number; is_default: boolea
     e.rsa_amount = 'Select an RSA premium tier';
   else if (!tiers.some(t => t.amount === rsa))
     e.rsa_amount = 'Selected tier is not assigned to your account';
+  if (!(PAYMENT_METHODS as readonly string[]).includes(f.payment_method))
+    e.payment_method = 'Select a payment method';
   return e;
 }
 
@@ -388,6 +396,38 @@ export default function NewCertificateWizard() {
                     <span>{totalAmt > 0 ? `₹${totalAmt.toLocaleString('en-IN')}` : '—'}</span>
                   </div>
                 </div>
+
+                {/* Payment method — required */}
+                <div>
+                  <label className="block text-xs font-semibold tracking-wider uppercase text-stone-500 mb-2">
+                    Payment Method
+                  </label>
+                  <select
+                    value={form.payment_method}
+                    onChange={e => update('payment_method', e.target.value)}
+                    className={`w-full px-4 py-3 bg-stone-50 border text-sm rounded-lg focus:outline-none focus:bg-white transition-colors appearance-none ${
+                      errors.payment_method
+                        ? 'border-red-300 focus:border-red-500'
+                        : 'border-stone-200 focus:border-slate-900'
+                    }`}
+                  >
+                    <option value="">Select payment method</option>
+                    {PAYMENT_METHODS.map(m => (
+                      <option key={m} value={m}>{PAYMENT_LABELS[m]}</option>
+                    ))}
+                  </select>
+                  {errors.payment_method && (
+                    <p className="mt-1.5 text-xs text-red-600 font-medium">{errors.payment_method}</p>
+                  )}
+                </div>
+
+                {/* Payment reference — optional */}
+                <Field
+                  label="Txn / Cheque / Ref no — optional"
+                  value={form.payment_reference}
+                  onChange={v => update('payment_reference', v)}
+                  placeholder="e.g. UPI ref no, cheque no, bank ref…"
+                />
 
               </div>
             )}

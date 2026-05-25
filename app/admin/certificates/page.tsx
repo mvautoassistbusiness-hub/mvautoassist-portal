@@ -28,6 +28,9 @@ export default async function CertificatesPage() {
       status,
       created_at,
       chassis_no,
+      payment_method,
+      payment_reference,
+      payment_received,
       agent:users!certificates_agent_id_fkey(full_name)
     `)
     .order('created_at', { ascending: false });

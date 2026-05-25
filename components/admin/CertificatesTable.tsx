@@ -2,8 +2,8 @@
 
 import { useOptimistic, useTransition, useState } from 'react';
 import Link from 'next/link';
-import { Search, Download, CheckCircle2, X, ChevronRight, FileText } from 'lucide-react';
-import { approveCertificate, rejectCertificate } from '@/app/admin/certificates/actions';
+import { Search, Download, CheckCircle2, X, ChevronRight, FileText, Banknote } from 'lucide-react';
+import { approveCertificate, rejectCertificate, confirmPaymentReceived } from '@/app/admin/certificates/actions';
 import StatusBadge from '@/components/StatusBadge';
 
 // ─── shared type (exported so page.tsx can use it) ───────────────────────────
@@ -19,7 +19,14 @@ export type CertRow = {
   status: string;
   created_at: string;
   chassis_no: string | null;
+  payment_method: string | null;
+  payment_reference: string | null;
+  payment_received: boolean;
   agent: { full_name: string } | null;
+};
+
+const PAYMENT_LABELS: Record<string, string> = {
+  cash: 'Cash', upi: 'UPI', card: 'Card', cheque: 'Cheque', bank_transfer: 'Bank Transfer',
 };
 
 // ─── main component ───────────────────────────────────────────────────────────
@@ -32,14 +39,16 @@ export default function CertificatesTable({ certs }: { certs: CertRow[] }) {
   const [filter, setFilter]   = useState<Filter>('all');
   const [toast,  setToast]    = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [paymentPendingId, setPaymentPendingId] = useState<string | null>(null);
 
   const [, startTransition] = useTransition();
 
-  // Optimistic state — useOptimistic auto-reverts if the transition fails
+  // Optimistic state — handles status + payment_received changes
+  type OptUpdate = { id: string } & Partial<Pick<CertRow, 'status' | 'payment_received'>>;
   const [optimisticCerts, addOptimistic] = useOptimistic(
     certs,
-    (current, update: { id: string; status: string }) =>
-      current.map(c => c.id === update.id ? { ...c, status: update.status } : c)
+    (current: CertRow[], update: OptUpdate) =>
+      current.map(c => c.id === update.id ? { ...c, ...update } : c)
   );
 
   // ── filter logic ────────────────────────────────────────────────────────────
@@ -56,6 +65,22 @@ export default function CertificatesTable({ certs }: { certs: CertRow[] }) {
     }
     return true;
   });
+
+  // ── payment received toggle ──────────────────────────────────────────────────
+  function handlePaymentReceived(certId: string, received: boolean) {
+    if (paymentPendingId !== null || pendingId !== null) return;
+    setPaymentPendingId(certId);
+    startTransition(async () => {
+      addOptimistic({ id: certId, payment_received: received });
+      try {
+        await confirmPaymentReceived(certId, received);
+      } catch (err) {
+        showToast(`Could not update payment status. ${err instanceof Error ? err.message : 'Please try again.'}`);
+      } finally {
+        setPaymentPendingId(null);
+      }
+    });
+  }
 
   // ── approve / reject ────────────────────────────────────────────────────────
   function handleStatus(certId: string, newStatus: 'approved' | 'rejected') {
@@ -158,6 +183,7 @@ export default function CertificatesTable({ certs }: { certs: CertRow[] }) {
                     <th className="px-6 py-3 font-semibold hidden md:table-cell">Vehicle</th>
                     <th className="px-6 py-3 font-semibold hidden lg:table-cell">Agent</th>
                     <th className="px-6 py-3 font-semibold">Amount</th>
+                    <th className="px-6 py-3 font-semibold hidden xl:table-cell">Payment</th>
                     <th className="px-6 py-3 font-semibold">Status</th>
                     <th className="px-6 py-3" />
                   </tr>
@@ -205,6 +231,22 @@ export default function CertificatesTable({ certs }: { certs: CertRow[] }) {
                         ₹{(c.total_amount ?? 0).toLocaleString('en-IN')}
                       </td>
 
+                      {/* Payment method + reference — hidden on small screens */}
+                      <td className="px-6 py-4 hidden xl:table-cell">
+                        {c.payment_method ? (
+                          <div>
+                            <div className="text-xs font-semibold text-stone-700">
+                              {PAYMENT_LABELS[c.payment_method] ?? c.payment_method}
+                            </div>
+                            {c.payment_reference && (
+                              <div className="text-xs text-stone-400 mt-0.5">{c.payment_reference}</div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-stone-300">—</span>
+                        )}
+                      </td>
+
                       {/* Status */}
                       <td className="px-6 py-4">
                         <StatusBadge status={c.status} />
@@ -213,6 +255,23 @@ export default function CertificatesTable({ certs }: { certs: CertRow[] }) {
                       {/* Actions */}
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-1 justify-end">
+                          {/* Payment received toggle — independent of approve/reject */}
+                          {c.payment_method && (
+                            <button
+                              onClick={() => handlePaymentReceived(c.id, !c.payment_received)}
+                              disabled={paymentPendingId !== null || pendingId !== null}
+                              title={c.payment_received ? 'Unmark payment received' : 'Mark payment received'}
+                              className={`p-1.5 rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                                paymentPendingId === c.id ? 'opacity-40 cursor-wait' : ''
+                              } ${
+                                c.payment_received
+                                  ? 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100'
+                                  : 'text-stone-300 hover:text-emerald-600 hover:bg-emerald-50'
+                              }`}
+                            >
+                              <Banknote className="w-4 h-4" />
+                            </button>
+                          )}
                           {c.status === 'pending' && (
                             <>
                               <button
@@ -233,8 +292,6 @@ export default function CertificatesTable({ certs }: { certs: CertRow[] }) {
                               </button>
                             </>
                           )}
-                          {/* TODO (Phase 6): /cert/[id] placeholder page lands users on a "coming soon"
-                              view. Real preview built in Week 4. */}
                           <Link
                             href={`/cert/${c.id}`}
                             prefetch={false}

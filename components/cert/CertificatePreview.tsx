@@ -26,6 +26,8 @@ export type CertData = {
   total_amount: number;
   status: string;
   agent_id: string;
+  payment_method: string | null;
+  payment_reference: string | null;
 };
 
 export type AgentData = {
@@ -57,6 +59,10 @@ function fmtDMY(d: string | null, time?: string) {
 function fmtAmt(n: number) {
   return `\u20b9${new Intl.NumberFormat('en-IN').format(n)}`;
 }
+
+const PAYMENT_LABELS: Record<string, string> = {
+  cash: 'Cash', upi: 'UPI', card: 'Card', cheque: 'Cheque', bank_transfer: 'Bank Transfer',
+};
 
 const BD = '1px solid #ddd';
 const C: React.CSSProperties = { border: BD, padding: '6px 6px', verticalAlign: 'top' };
@@ -233,6 +239,15 @@ export default function CertificatePreview({ cert, helpline, backHref }: Props) 
                     </tr>
                   </tbody>
                 </table>
+              </td>
+            </tr>
+            <tr>
+              <th style={TH}>Payment Mode</th>
+              <td colSpan={3} style={C}>
+                {cert.payment_method
+                  ? `${PAYMENT_LABELS[cert.payment_method] ?? cert.payment_method}${cert.payment_reference ? ` · ${cert.payment_reference}` : ''}`
+                  : '—'
+                }
               </td>
             </tr>
           </tbody>

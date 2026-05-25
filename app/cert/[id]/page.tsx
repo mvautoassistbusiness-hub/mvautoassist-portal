@@ -62,7 +62,8 @@ export default async function CertPage({
       engine_no, chassis_no, fuel_type, manufacturing_year,
       start_date, end_date,
       insurance_amount, rsa_amount, total_amount,
-      status, agent_id
+      status, agent_id,
+      payment_method, payment_reference
     `)
     .eq('id', id)
     .single();
