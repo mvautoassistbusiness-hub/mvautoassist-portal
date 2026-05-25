@@ -86,10 +86,10 @@ export default async function AdminDashboardPage() {
         .select('*', { count: 'exact', head: true })
         .eq('status', 'pending'),
 
-      // MTD revenue: approved certs created in the current calendar month
+      // MTD RSA revenue: approved certs created in the current calendar month
       supabase
         .from('certificates')
-        .select('total_amount')
+        .select('rsa_amount')
         .eq('status', 'approved')
         .gte('created_at', monthStart),
 
@@ -107,10 +107,10 @@ export default async function AdminDashboardPage() {
         .from('certificates')
         .select('agent_id'),
 
-      // Cert revenue per day over last 12 days (for bar chart)
+      // RSA revenue per day over last 12 days (for bar chart)
       supabase
         .from('certificates')
-        .select('created_at, total_amount')
+        .select('created_at, rsa_amount')
         .gte('created_at', chartStartISO)
         .order('created_at', { ascending: true }),
 
@@ -131,7 +131,7 @@ export default async function AdminDashboardPage() {
     total    = r_total.count    ?? 0;
     approved = r_approved.count ?? 0;
     pending  = r_pending.count  ?? 0;
-    revenue  = (r_mtd.data ?? []).reduce((s, c) => s + (Number(c.total_amount) || 0), 0);
+    revenue  = (r_mtd.data ?? []).reduce((s, c) => s + (Number(c.rsa_amount) || 0), 0);
 
     // ── recent certs ─────────────────────────────────────────────────────────
     // PostgREST without generated types infers the FK join as array[];
@@ -154,7 +154,7 @@ export default async function AdminDashboardPage() {
     const dayMap = new Map<string, number>();
     (r_chart.data ?? []).forEach(c => {
       const day = c.created_at.substring(0, 10); // YYYY-MM-DD (UTC)
-      dayMap.set(day, (dayMap.get(day) ?? 0) + (Number(c.total_amount) || 0));
+      dayMap.set(day, (dayMap.get(day) ?? 0) + (Number(c.rsa_amount) || 0));
     });
     const maxAmt = Math.max(...Array.from(dayMap.values()), 1);
     bars = Array.from({ length: 12 }, (_, i) => {
@@ -174,7 +174,7 @@ export default async function AdminDashboardPage() {
     { label: 'Total Certificates', value: total.toLocaleString('en-IN'),    icon: FileText,    accent: 'bg-slate-900'    },
     { label: 'Approved',           value: approved.toLocaleString('en-IN'), icon: CheckCircle2, accent: 'bg-emerald-600' },
     { label: 'Pending Review',     value: pending.toLocaleString('en-IN'),  icon: Clock,        accent: 'bg-amber-500'   },
-    { label: 'Revenue (MTD)',      value: fmtRupee(revenue),                icon: IndianRupee,  accent: 'bg-red-600'     },
+    { label: 'RSA Revenue (MTD)',  value: fmtRupee(revenue),                icon: IndianRupee,  accent: 'bg-red-600'     },
   ];
 
   // ── render ─────────────────────────────────────────────────────────────────
@@ -319,7 +319,7 @@ export default async function AdminDashboardPage() {
                   {fmtRupee(revenue)}
                 </div>
                 <p className="text-stone-300 text-sm mb-6">
-                  Gross revenue from certificate issuance
+                  RSA revenue · cert issuance
                 </p>
 
                 {/* 12-day bar chart — last bar (today) highlighted amber */}

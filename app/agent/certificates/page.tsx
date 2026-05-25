@@ -21,6 +21,7 @@ type CertCard = {
   customer_name: string;
   make_model: string;
   vehicle_type: string;
+  rsa_amount: number;
   total_amount: number;
   status: string;
   end_date: string;
@@ -35,17 +36,17 @@ export default async function AgentCertificatesPage() {
   // RLS enforces agent_id = auth.uid() so no manual filter needed
   const { data, error } = await supabase
     .from('certificates')
-    .select('id, cert_number, customer_name, make_model, vehicle_type, total_amount, status, end_date')
+    .select('id, cert_number, customer_name, make_model, vehicle_type, rsa_amount, total_amount, status, end_date')
     .order('created_at', { ascending: false });
 
   if (error) console.error('[AgentCertificates]', error);
 
   const certs = (data ?? []) as CertCard[];
 
-  // Totals for subtitle
+  // RSA revenue for subtitle (insurance excluded — only RSA is the business's revenue)
   const totalRevenue = certs
     .filter(c => c.status === 'approved')
-    .reduce((s, c) => s + (c.total_amount ?? 0), 0);
+    .reduce((s, c) => s + (c.rsa_amount ?? 0), 0);
 
   return (
     <>
@@ -63,7 +64,7 @@ export default async function AgentCertificatesPage() {
             <p className="text-sm text-stone-500 mt-1">
               {certs.length} issued
               {totalRevenue > 0 && (
-                <> · ₹{totalRevenue.toLocaleString('en-IN')} approved revenue</>
+                <> · ₹{totalRevenue.toLocaleString('en-IN')} approved RSA revenue</>
               )}
             </p>
           </div>
