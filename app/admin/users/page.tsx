@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
-import { Plus, MapPin } from 'lucide-react';
+import { MapPin } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
+import NewUserButton from '@/components/admin/NewUserButton';
 
 export const metadata: Metadata = {
   title: 'Users · MVAutoAssist Admin',
@@ -93,14 +94,7 @@ export default async function UsersPage() {
             </p>
           </div>
         </div>
-        {/* New user — coming in a future release */}
-        <button
-          title="Coming soon"
-          className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-semibold opacity-60 cursor-not-allowed"
-        >
-          <Plus className="w-4 h-4" />
-          New user
-        </button>
+        <NewUserButton />
       </div>
 
       <div className="p-6 lg:p-10">
