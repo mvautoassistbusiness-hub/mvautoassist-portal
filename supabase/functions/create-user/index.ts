@@ -70,8 +70,8 @@ Deno.serve(async (req) => {
   const { data: created, error: createErr } = await adminClient.auth.admin.createUser({
     email: email.trim().toLowerCase(),
     password,
-    email_confirm: true,
-    user_metadata: { full_name: full_name.trim(), role },
+    email_confirm: true,              // admin-created accounts skip email verification
+    user_metadata: { full_name: full_name.trim(), role }, // consumed by handle_new_user trigger → public.users
   });
 
   if (createErr || !created?.user) {

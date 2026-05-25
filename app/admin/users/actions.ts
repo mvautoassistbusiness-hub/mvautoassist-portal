@@ -26,6 +26,7 @@ async function requireAdmin() {
 // ─── generateTempPassword ─────────────────────────────────────────────────────
 
 function generateTempPassword(): string {
+  // Omits visually ambiguous chars (I, l, O, 0, 1) so the password is readable at a glance
   const charset = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$';
   const arr = new Uint8Array(14);
   crypto.getRandomValues(arr);
