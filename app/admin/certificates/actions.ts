@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/server';
 async function requireAdmin() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { supabase: null, adminError: 'Unauthorized' as const };
+  if (!user) return { supabase: null, user: null, adminError: 'Unauthorized' as const };
 
   const { data: profile } = await supabase
     .from('users')
@@ -17,19 +17,17 @@ async function requireAdmin() {
     .single();
 
   if (!profile || profile.role !== 'admin') {
-    return { supabase: null, adminError: 'Unauthorized' as const };
+    return { supabase: null, user: null, adminError: 'Unauthorized' as const };
   }
 
-  return { supabase, adminError: null };
+  return { supabase, user, adminError: null };
 }
 
 // ─── approveCertificate ───────────────────────────────────────────────────────
 
 export async function approveCertificate(certId: string): Promise<void> {
-  const { supabase, adminError } = await requireAdmin();
+  const { supabase, user, adminError } = await requireAdmin();
   if (adminError) throw new Error(adminError);
-
-  const { data: { user } } = await supabase!.auth.getUser();
 
   const { error } = await supabase!
     .from('certificates')
@@ -53,15 +51,9 @@ export async function rejectCertificate(certId: string): Promise<void> {
   const { supabase, adminError } = await requireAdmin();
   if (adminError) throw new Error(adminError);
 
-  const { data: { user } } = await supabase!.auth.getUser();
-
   const { error } = await supabase!
     .from('certificates')
-    .update({
-      status:      'rejected',
-      approved_at: new Date().toISOString(),
-      approved_by: user!.id,
-    })
+    .update({ status: 'rejected' })
     .eq('id', certId)
     .eq('status', 'pending');
 

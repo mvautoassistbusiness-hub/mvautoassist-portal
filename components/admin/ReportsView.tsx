@@ -57,6 +57,12 @@ export default function ReportsView({ certs, agents }: { certs: ReportCert[]; ag
   const [dateFrom,       setDateFrom]       = useState(thirtyDaysAgo());
   const [dateTo,         setDateTo]         = useState(todayStr());
   const [selectedAgent,  setSelectedAgent]  = useState('');
+  const [exportToast,    setExportToast]    = useState<string | null>(null);
+
+  function showExportToast(msg: string) {
+    setExportToast(msg);
+    setTimeout(() => setExportToast(null), 4000);
+  }
 
   // ── filtered by date range ───────────────────────────────────────────────────
   const datFiltered = useMemo(() => certs.filter(c => {
@@ -113,30 +119,38 @@ export default function ReportsView({ certs, agents }: { certs: ReportCert[]; ag
 
   // ── export handlers ───────────────────────────────────────────────────────────
   async function exportSection1() {
-    const { exportToExcel } = await import('@/lib/exportToExcel');
-    const rows = section1Rows.map(r => ({
-      Date:                  fmtDate(r.date),
-      'Agent Name':          r.agentName,
-      'Location':            r.location,
-      'Certificates Issued': r.count,
-      'RSA Amount (₹)':      r.rsaAmount,
-    }));
-    const today = todayStr();
-    exportToExcel(rows, `MVAutoAssist_Report_${today}`);
+    try {
+      const { exportToExcel } = await import('@/lib/exportToExcel');
+      const rows = section1Rows.map(r => ({
+        Date:                  fmtDate(r.date),
+        'Agent Name':          r.agentName,
+        'Location':            r.location,
+        'Certificates Issued': r.count,
+        'RSA Amount (₹)':      r.rsaAmount,
+      }));
+      const today = todayStr();
+      exportToExcel(rows, `MVAutoAssist_Report_${today}`);
+    } catch (err) {
+      showExportToast(`Export failed: ${err instanceof Error ? err.message : 'Please try again.'}`);
+    }
   }
 
   async function exportSection2() {
-    const { exportToExcel } = await import('@/lib/exportToExcel');
-    const rows = section2Rows.map(c => ({
-      Date:               fmtDate(toDateStr(c.created_at)),
-      'Customer Name':    c.customer_name,
-      'Vehicle':          c.make_model,
-      'Certificate No':   c.cert_number,
-      'RSA Amount (₹)':   Number(c.rsa_amount) || 0,
-      'Status':           c.status,
-    }));
-    const today = todayStr();
-    exportToExcel(rows, `MVAutoAssist_Report_${today}`);
+    try {
+      const { exportToExcel } = await import('@/lib/exportToExcel');
+      const rows = section2Rows.map(c => ({
+        Date:               fmtDate(toDateStr(c.created_at)),
+        'Customer Name':    c.customer_name,
+        'Vehicle':          c.make_model,
+        'Certificate No':   c.cert_number,
+        'RSA Amount (₹)':   Number(c.rsa_amount) || 0,
+        'Status':           c.status,
+      }));
+      const today = todayStr();
+      exportToExcel(rows, `MVAutoAssist_Report_${today}`);
+    } catch (err) {
+      showExportToast(`Export failed: ${err instanceof Error ? err.message : 'Please try again.'}`);
+    }
   }
 
   // ── render ────────────────────────────────────────────────────────────────────
@@ -363,6 +377,12 @@ export default function ReportsView({ certs, agents }: { certs: ReportCert[]; ag
         </div>
 
       </div>
+
+      {exportToast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-red-600 text-white text-sm font-medium px-5 py-3 rounded-xl shadow-lg whitespace-nowrap">
+          {exportToast}
+        </div>
+      )}
     </>
   );
 }

@@ -51,8 +51,6 @@ export default function LoginPage() {
       return;
     }
 
-    console.log('Role detected:', profile.role);
-
     if (profile.role === 'admin') {
       router.push('/admin/dashboard');
     } else if (profile.role === 'dealer') {
@@ -207,6 +205,7 @@ export default function LoginPage() {
                   type="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); }}
                   placeholder="vilas@example.com"
                   className="w-full pl-12 pr-4 py-3.5 bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-slate-900 focus:bg-white transition-all"
                 />
@@ -229,6 +228,7 @@ export default function LoginPage() {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); }}
                   placeholder="••••••••"
                   className="w-full pl-12 pr-12 py-3.5 bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-slate-900 focus:bg-white transition-all"
                 />

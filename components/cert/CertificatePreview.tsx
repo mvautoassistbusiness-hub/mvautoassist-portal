@@ -73,7 +73,7 @@ const ITC: React.CSSProperties = { border: BD, padding: '5px 6px', verticalAlign
 
 type Props = { cert: CertData; agent: AgentData; helpline: string; backHref: string };
 
-export default function CertificatePreview({ cert, helpline, backHref }: Props) {
+export default function CertificatePreview({ cert, agent, helpline, backHref }: Props) {
   return (
     <div
       style={{ fontFamily: 'Arial, Helvetica, sans-serif', fontSize: 13, color: '#111' }}
@@ -94,8 +94,8 @@ export default function CertificatePreview({ cert, helpline, backHref }: Props) 
             <Printer className="w-4 h-4" /> Print
           </button>
           <button
-            title="Coming soon"
-            className="flex items-center gap-2 text-sm font-semibold bg-slate-900 text-white px-4 py-2 opacity-60 cursor-not-allowed"
+            onClick={() => window.print()}
+            className="flex items-center gap-2 text-sm font-semibold bg-slate-900 text-white px-4 py-2 hover:bg-slate-800 transition-colors"
           >
             <Download className="w-4 h-4" /> Download PDF
           </button>
@@ -125,6 +125,11 @@ export default function CertificatePreview({ cert, helpline, backHref }: Props) 
                   <strong style={{ fontWeight: 600, color: '#374151' }}>SHREEVARDHAN SERVICES</strong><br />
                   RS No. 226/A/1, Unit No. 2, Kamabe Turf,<br />
                   Thane, Kolhapur - 416012
+                </div>
+                <div style={{ fontSize: 10.5, color: '#374151', marginTop: 6, paddingTop: 6, borderTop: '1px solid #e5e7eb' }}>
+                  <strong style={{ fontWeight: 600 }}>Issued by:</strong>{' '}
+                  {agent.full_name}
+                  {agent.location && <> &middot; {agent.location}</>}
                 </div>
               </td>
 

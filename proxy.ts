@@ -20,7 +20,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next({ request });
   }
 
-  // ── 2. Build middleware Supabase client (cookies threaded manually) ────────
+  // ── 2. Build proxy Supabase client (cookies threaded manually) ────────────
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -57,7 +57,6 @@ export async function proxy(request: NextRequest) {
   // ── 4. Unauthenticated user on a protected route → /login ─────────────────
   if (!user) {
     if (pathname === '/login') {
-      // Not logged in, already on login — just show the page
       return response;
     }
     const dest = request.nextUrl.clone();

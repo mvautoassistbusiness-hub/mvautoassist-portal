@@ -44,6 +44,7 @@ export default async function AgentCertificatesPage() {
   const certs = (data ?? []) as CertCard[];
 
   // RSA revenue for subtitle (insurance excluded — only RSA is the business's revenue)
+  const activeCerts  = certs.filter(c => c.status !== 'rejected');
   const totalRevenue = certs
     .filter(c => c.status === 'approved')
     .reduce((s, c) => s + (c.rsa_amount ?? 0), 0);
@@ -62,7 +63,7 @@ export default async function AgentCertificatesPage() {
               My Certificates
             </h1>
             <p className="text-sm text-stone-500 mt-1">
-              {certs.length} issued
+              {activeCerts.length} issued
               {totalRevenue > 0 && (
                 <> · ₹{totalRevenue.toLocaleString('en-IN')} approved RSA revenue</>
               )}
