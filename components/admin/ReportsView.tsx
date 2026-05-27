@@ -243,7 +243,7 @@ export default function ReportsView({ certs, agents }: { certs: ReportCert[]; ag
               className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Download className="w-4 h-4" />
-              Export
+              Export Excel
             </button>
           </div>
 
@@ -317,7 +317,7 @@ export default function ReportsView({ certs, agents }: { certs: ReportCert[]; ag
                 className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Download className="w-4 h-4" />
-                Export
+                Export Excel
               </button>
             )}
           </div>

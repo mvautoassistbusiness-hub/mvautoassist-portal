@@ -46,14 +46,12 @@ const COVERAGES = [
   { id: 7, title: 'Number of Services', desc: 'During a plan', applicable: '1' },
 ] as const;
 
-function fmtYMD(d: string | null, time = '00:00') {
-  return d ? `${d} ${time}` : '-';
-}
-
-function fmtDMY(d: string | null, time?: string) {
+function formatCertDate(d: string | null): string {
   if (!d) return '-';
-  const [y, m, day] = d.split('-');
-  return time ? `${day}-${m}-${y} ${time}` : `${day}-${m}-${y}`;
+  const [y, m, day] = d.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, day)).toLocaleDateString('en-IN', {
+    day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC',
+  });
 }
 
 function fmtAmt(n: number) {
@@ -95,9 +93,10 @@ export default function CertificatePreview({ cert, agent, helpline, backHref }: 
           </button>
           <button
             onClick={() => window.print()}
+            title="Opens print dialog — choose 'Save as PDF'"
             className="flex items-center gap-2 text-sm font-semibold bg-slate-900 text-white px-4 py-2 hover:bg-slate-800 transition-colors"
           >
-            <Download className="w-4 h-4" /> Download PDF
+            <Download className="w-4 h-4" /> Save as PDF
           </button>
         </div>
       </div>
@@ -152,13 +151,13 @@ export default function CertificatePreview({ cert, agent, helpline, backHref }: 
               <th style={TH}>Tax Invoice / Certificate No</th>
               <td style={{ ...C, fontFamily: 'monospace', fontWeight: 600 }}>{cert.cert_number}</td>
               <th style={TH}>Certificate Start Date</th>
-              <td style={C}>{fmtYMD(cert.start_date, '00:00')}</td>
+              <td style={C}>{formatCertDate(cert.start_date)}</td>
             </tr>
             <tr>
               <th style={TH}>Customer DOB</th>
-              <td style={C}>{fmtDMY(cert.customer_dob)}</td>
+              <td style={C}>{formatCertDate(cert.customer_dob)}</td>
               <th style={TH}>Certificate End Date</th>
-              <td style={C}>{fmtDMY(cert.end_date, '23:59')}</td>
+              <td style={C}>{formatCertDate(cert.end_date)}</td>
             </tr>
 
             <tr><td colSpan={4} style={BNR}>Vehicle Details</td></tr>

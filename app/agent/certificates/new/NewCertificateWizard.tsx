@@ -149,7 +149,7 @@ export default function NewCertificateWizard() {
       try {
         const result = await createCertificate(form);
         if (result.ok) {
-          router.push(`/cert/${result.certId}`);
+          router.replace(`/cert/${result.certId}`);
         } else {
           setSubmitError(result.error);
         }
@@ -231,7 +231,7 @@ export default function NewCertificateWizard() {
                 error={errors.customer_name}
               />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field label="Date of birth" type="date" value={form.customer_dob} onChange={v => update('customer_dob', v)} />
+                <Field label="Date of birth (optional)" type="date" value={form.customer_dob} onChange={v => update('customer_dob', v)} />
                 <Field label="Mobile number" value={form.customer_mobile} onChange={v => update('customer_mobile', v)} placeholder="10-digit mobile number" error={errors.customer_mobile} />
               </div>
               <Field label="Email (optional)" type="email" value={form.customer_email} onChange={v => update('customer_email', v)} placeholder="customer@example.com" />
@@ -262,7 +262,7 @@ export default function NewCertificateWizard() {
                 {errors.vehicle_type && <p className="mt-1.5 text-xs text-red-600 font-medium">{errors.vehicle_type}</p>}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field label="Registration no" value={form.registration_no} onChange={v => update('registration_no', v)} placeholder="MH09 AB 1234 or 'New'" />
+                <Field label="Registration no (optional)" value={form.registration_no} onChange={v => update('registration_no', v)} placeholder="MH09 AB 1234 or 'New'" />
                 <Field label="Make & Model" value={form.make_model} onChange={v => update('make_model', v)} placeholder="HONDA CB350RS" error={errors.make_model} />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

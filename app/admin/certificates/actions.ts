@@ -3,6 +3,15 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 
+// ─── error normaliser ─────────────────────────────────────────────────────────
+
+function humanizeDbError(msg: string): string {
+  if (msg.includes('duplicate key'))                                  return 'Certificate already exists';
+  if (msg.includes('row-level security') || msg.includes('permission denied')) return 'Permission denied';
+  if (msg.toLowerCase().includes('jwt') || msg.includes('expired'))  return 'Session expired — please sign in again';
+  return 'An error occurred. Please try again.';
+}
+
 // ─── admin guard (mirrors app/admin/pricing/actions.ts pattern) ───────────────
 
 async function requireAdmin() {
@@ -39,7 +48,7 @@ export async function approveCertificate(certId: string): Promise<void> {
     .eq('id', certId)
     .eq('status', 'pending');
 
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(humanizeDbError(error.message));
 
   revalidatePath('/admin/certificates');
   revalidatePath('/admin/dashboard');
@@ -57,7 +66,7 @@ export async function rejectCertificate(certId: string): Promise<void> {
     .eq('id', certId)
     .eq('status', 'pending');
 
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(humanizeDbError(error.message));
 
   revalidatePath('/admin/certificates');
   revalidatePath('/admin/dashboard');
@@ -77,7 +86,7 @@ export async function confirmPaymentReceived(
     .update({ payment_received: received })
     .eq('id', certId);
 
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(humanizeDbError(error.message));
 
   revalidatePath('/admin/certificates');
 }

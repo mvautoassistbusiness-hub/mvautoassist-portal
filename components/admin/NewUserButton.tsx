@@ -76,7 +76,7 @@ export default function NewUserButton() {
     return (
       <button
         onClick={open}
-        className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 transition-colors"
+        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 transition-colors"
       >
         <Plus className="w-4 h-4" />
         New user
@@ -91,7 +91,7 @@ export default function NewUserButton() {
 
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
+        <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
 
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-5 border-b border-stone-200">

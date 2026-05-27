@@ -37,7 +37,9 @@ const FILTERS: Filter[] = ['all', 'pending', 'approved', 'rejected'];
 export default function CertificatesTable({ certs }: { certs: CertRow[] }) {
   const [search, setSearch]   = useState('');
   const [filter, setFilter]   = useState<Filter>('all');
-  const [toast,  setToast]    = useState<string | null>(null);
+  const [toast,        setToast]        = useState<string | null>(null);
+  const [successToast, setSuccessToast] = useState<string | null>(null);
+  const [isExporting,  setIsExporting]  = useState(false);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [paymentPendingId, setPaymentPendingId] = useState<string | null>(null);
 
@@ -105,23 +107,32 @@ export default function CertificatesTable({ certs }: { certs: CertRow[] }) {
   }
 
   async function handleExport() {
-    const { exportToExcel } = await import('@/lib/exportToExcel');
-    const rows = filtered.map(c => ({
-      'Certificate No':  c.cert_number,
-      'Date':            new Date(c.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
-      'Customer Name':   c.customer_name,
-      'Mobile':          c.customer_mobile,
-      'Vehicle':         c.make_model,
-      'Type':            c.vehicle_type,
-      'Agent':           c.agent?.full_name ?? '—',
-      'Amount (₹)':      c.total_amount ?? 0,
-      'Payment Method':  c.payment_method ?? '—',
-      'Payment Ref':     c.payment_reference ?? '—',
-      'Payment Received': c.payment_received ? 'Yes' : 'No',
-      'Status':          c.status,
-    }));
-    const today = new Date().toISOString().substring(0, 10);
-    exportToExcel(rows, `MVAutoAssist_Certificates_${today}`);
+    setIsExporting(true);
+    try {
+      const { exportToExcel } = await import('@/lib/exportToExcel');
+      const rows = filtered.map(c => ({
+        'Certificate No':   c.cert_number,
+        'Date':             new Date(c.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
+        'Customer Name':    c.customer_name,
+        'Mobile':           c.customer_mobile,
+        'Vehicle':          c.make_model,
+        'Type':             c.vehicle_type,
+        'Agent':            c.agent?.full_name ?? '—',
+        'Total Amount (₹)': c.total_amount ?? 0,
+        'Payment Method':   c.payment_method ?? '—',
+        'Payment Ref':      c.payment_reference ?? '—',
+        'Payment Received': c.payment_received ? 'Yes' : 'No',
+        'Status':           c.status,
+      }));
+      const today = new Date().toISOString().substring(0, 10);
+      exportToExcel(rows, `MVAutoAssist_Certificates_${today}`);
+      setSuccessToast(`Exported ${rows.length} row${rows.length !== 1 ? 's' : ''} to Excel`);
+      setTimeout(() => setSuccessToast(null), 4000);
+    } catch (err) {
+      showToast(`Export failed: ${err instanceof Error ? err.message : 'Please try again.'}`);
+    } finally {
+      setIsExporting(false);
+    }
   }
 
   // ── render ──────────────────────────────────────────────────────────────────
@@ -146,11 +157,11 @@ export default function CertificatesTable({ certs }: { certs: CertRow[] }) {
         </div>
         <button
           onClick={handleExport}
-          disabled={filtered.length === 0}
-          className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={filtered.length === 0 || isExporting}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Download className="w-4 h-4" />
-          Export
+          {isExporting ? 'Exporting…' : 'Export Excel'}
         </button>
       </div>
 
@@ -202,7 +213,7 @@ export default function CertificatesTable({ certs }: { certs: CertRow[] }) {
                     <th className="px-6 py-3 font-semibold">Customer</th>
                     <th className="px-6 py-3 font-semibold hidden md:table-cell">Vehicle</th>
                     <th className="px-6 py-3 font-semibold hidden lg:table-cell">Agent</th>
-                    <th className="px-6 py-3 font-semibold">Amount</th>
+                    <th className="px-6 py-3 font-semibold">Total Amount</th>
                     <th className="px-6 py-3 font-semibold hidden xl:table-cell">Payment</th>
                     <th className="px-6 py-3 font-semibold">Status</th>
                     <th className="px-6 py-3" />
@@ -330,6 +341,13 @@ export default function CertificatesTable({ certs }: { certs: CertRow[] }) {
           )}
         </div>
       </div>
+
+      {/* Success toast */}
+      {successToast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-emerald-600 text-white text-sm font-medium px-5 py-3 rounded-xl shadow-lg whitespace-nowrap">
+          {successToast}
+        </div>
+      )}
 
       {/* Error toast */}
       {toast && (
