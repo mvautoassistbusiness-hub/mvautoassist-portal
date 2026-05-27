@@ -83,3 +83,35 @@ export async function createUser(input: CreateUserInput): Promise<CreateUserResu
   revalidatePath('/admin/users');
   return { ok: true, tempPassword };
 }
+
+// ─── updateUser ───────────────────────────────────────────────────────────────
+
+export type UpdateUserInput = {
+  id: string;
+  full_name: string;
+  role: 'admin' | 'dealer';
+  location?: string;
+};
+
+export type UpdateUserResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
+export async function updateUser(input: UpdateUserInput): Promise<UpdateUserResult> {
+  const { supabase, adminError } = await requireAdmin();
+  if (adminError) return { ok: false, error: adminError };
+
+  const { error } = await supabase!
+    .from('users')
+    .update({
+      full_name: input.full_name.trim(),
+      role:      input.role,
+      location:  input.location?.trim() || null,
+    })
+    .eq('id', input.id);
+
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath('/admin/users');
+  return { ok: true };
+}

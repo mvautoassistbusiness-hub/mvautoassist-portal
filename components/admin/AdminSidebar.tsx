@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   Shield, LayoutDashboard, FileText, Users,
-  IndianRupee, LogOut, Menu, X,
+  IndianRupee, LogOut, Menu, X, BarChart2,
 } from 'lucide-react';
 import { signOutUser } from '@/lib/auth/signOut';
 
@@ -14,6 +14,7 @@ const NAV = [
   { href: '/admin/certificates', label: 'Certificates', icon: FileText },
   { href: '/admin/users',        label: 'Users & Roles', icon: Users },
   { href: '/admin/pricing',      label: 'Pricing Rules', icon: IndianRupee },
+  { href: '/admin/reports',      label: 'Reports',       icon: BarChart2 },
 ];
 
 // Static base classes in a plain string so Tailwind v4's scanner never misses them.

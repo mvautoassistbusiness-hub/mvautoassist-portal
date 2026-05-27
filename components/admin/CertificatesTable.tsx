@@ -104,6 +104,26 @@ export default function CertificatesTable({ certs }: { certs: CertRow[] }) {
     setTimeout(() => setToast(null), 4000);
   }
 
+  async function handleExport() {
+    const { exportToExcel } = await import('@/lib/exportToExcel');
+    const rows = filtered.map(c => ({
+      'Certificate No':  c.cert_number,
+      'Date':            new Date(c.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
+      'Customer Name':   c.customer_name,
+      'Mobile':          c.customer_mobile,
+      'Vehicle':         c.make_model,
+      'Type':            c.vehicle_type,
+      'Agent':           c.agent?.full_name ?? '—',
+      'Amount (₹)':      c.total_amount ?? 0,
+      'Payment Method':  c.payment_method ?? '—',
+      'Payment Ref':     c.payment_reference ?? '—',
+      'Payment Received': c.payment_received ? 'Yes' : 'No',
+      'Status':          c.status,
+    }));
+    const today = new Date().toISOString().substring(0, 10);
+    exportToExcel(rows, `MVAutoAssist_Certificates_${today}`);
+  }
+
   // ── render ──────────────────────────────────────────────────────────────────
   return (
     <>
@@ -124,10 +144,10 @@ export default function CertificatesTable({ certs }: { certs: CertRow[] }) {
             </p>
           </div>
         </div>
-        {/* Export — coming in a future release */}
         <button
-          title="Coming soon"
-          className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-semibold opacity-60 cursor-not-allowed"
+          onClick={handleExport}
+          disabled={filtered.length === 0}
+          className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Download className="w-4 h-4" />
           Export

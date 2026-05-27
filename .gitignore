@@ -44,3 +44,6 @@ next-env.d.ts
 db_pass
 .verify-screenshots/
 verify-screenshots*.mjs
+
+# claude code
+.claude/
