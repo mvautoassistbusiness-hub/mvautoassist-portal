@@ -84,9 +84,11 @@ export async function confirmPaymentReceived(
   const { error } = await supabase!
     .from('certificates')
     .update({ payment_received: received })
-    .eq('id', certId);
+    .eq('id', certId)
+    .in('status', ['pending', 'approved']);
 
   if (error) throw new Error(humanizeDbError(error.message));
 
   revalidatePath('/admin/certificates');
+  revalidatePath('/admin/payments');
 }

@@ -89,6 +89,7 @@ export default function PaymentsLedger({ payments }: { payments: PaymentRow[] })
         const created = new Date(p.created_at);
         created.setHours(0, 0, 0, 0);
         const from = new Date(dateFrom);
+        from.setHours(0, 0, 0, 0);
         if (created < from) return false;
       }
       if (dateTo) {
@@ -177,8 +178,8 @@ export default function PaymentsLedger({ payments }: { payments: PaymentRow[] })
   const cards = [
     { label: 'Total Collected',       value: fmtRupee(totalCollected), icon: CheckCircle2,  accent: 'bg-emerald-600' },
     { label: 'Total Pending',         value: fmtRupee(totalPending),   icon: Wallet,         accent: 'bg-amber-500'   },
-    { label: 'Payment Confirmed',     value: countLogged.toLocaleString('en-IN'),    icon: IndianRupee,   accent: 'bg-slate-900'   },
-    { label: 'Payment Unconfirmed',   value: countUnconfirm.toLocaleString('en-IN'), icon: IndianRupee,   accent: 'bg-red-600'     },
+    { label: 'Certs: Payment Logged',  value: countLogged.toLocaleString('en-IN'),    icon: IndianRupee,   accent: 'bg-slate-900'   },
+    { label: 'Certs: Unconfirmed',    value: countUnconfirm.toLocaleString('en-IN'), icon: IndianRupee,   accent: 'bg-red-600'     },
   ];
 
   // ─── render ────────────────────────────────────────────────────────────────
@@ -380,7 +381,7 @@ export default function PaymentsLedger({ payments }: { payments: PaymentRow[] })
 
                       {/* Action */}
                       <td className="px-6 py-4 text-right whitespace-nowrap">
-                        {!p.payment_received && (
+                        {!p.payment_received && p.status !== 'rejected' && (
                           <button
                             onClick={() => handleConfirm(p.id)}
                             disabled={pendingId !== null}
