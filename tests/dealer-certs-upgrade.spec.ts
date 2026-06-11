@@ -64,24 +64,34 @@ async function firstVisibleCertNumber(page: Page): Promise<string | null> {
   return (await locator.textContent())?.trim() ?? null;
 }
 
-/** Extract the first visible customer name. */
+/** Extract the first visible customer name.
+ *  The name is in a <div class="font-semibold mb-0.5"> — use `div.font-semibold`
+ *  to avoid matching the StatusBadge <span class="... font-semibold ...">. */
 async function firstVisibleCustomerName(page: Page): Promise<string | null> {
   const links = page.locator('a[href^="/cert/"]');
   if (await links.count() === 0) return null;
-  // customer name is the font-semibold div inside the card
-  const nameEl = links.first().locator('.font-semibold').first();
+  // "div.font-semibold" excludes the badge span (which is a span, not a div)
+  const nameEl = links.first().locator('div.font-semibold').first();
   return (await nameEl.textContent())?.trim() ?? null;
 }
 
-/** Extract the first visible vehicle (make_model, text-xs text-stone-500). */
+/** Extract the first visible vehicle (make_model, text-xs text-stone-500 mb-4). */
 async function firstVisibleVehicle(page: Page): Promise<string | null> {
   const links = page.locator('a[href^="/cert/"]');
   if (await links.count() === 0) return null;
-  // make_model is the 4th child div: cert_number (div), customer_name (div), make_model (div)
-  // Select by the text-stone-500 div before the border-t section
   const vehicleEl = links.first().locator('.text-stone-500.mb-4').first();
   return (await vehicleEl.textContent())?.trim() ?? null;
 }
+
+/**
+ * StatusBadge renders:
+ *   <span class="... rounded-full ... font-semibold inline-flex ...">  ← outer (has text)
+ *     <span class="... rounded-full ..."></span>                        ← dot (no text)
+ *     Approved
+ *   </span>
+ * Use `span.rounded-full.inline-flex` to target only the outer badge.
+ */
+const BADGE_SELECTOR = 'a[href^="/cert/"] span.rounded-full.inline-flex';
 
 // ─── tests ───────────────────────────────────────────────────────────────────
 
@@ -143,8 +153,7 @@ test.describe('Dealer Certificates Upgrade', () => {
 
     await shot(page, 'DC3_pending_filter');
 
-    // Every visible badge should be "Pending" (amber dot)
-    const badges = page.locator('a[href^="/cert/"] span.rounded-full');
+    const badges = page.locator(BADGE_SELECTOR);
     const count  = await badges.count();
 
     for (let i = 0; i < count; i++) {
@@ -163,7 +172,7 @@ test.describe('Dealer Certificates Upgrade', () => {
 
     await shot(page, 'DC4_approved_filter');
 
-    const badges = page.locator('a[href^="/cert/"] span.rounded-full');
+    const badges = page.locator(BADGE_SELECTOR);
     const count  = await badges.count();
 
     for (let i = 0; i < count; i++) {
@@ -184,7 +193,7 @@ test.describe('Dealer Certificates Upgrade', () => {
 
     // All visible cards must have "Approved" status badge
     // (payment_received is a backend field; we can only verify the status badge is Approved)
-    const badges = page.locator('a[href^="/cert/"] span.rounded-full');
+    const badges = page.locator(BADGE_SELECTOR);
     const count  = await badges.count();
 
     for (let i = 0; i < count; i++) {
@@ -220,7 +229,8 @@ test.describe('Dealer Certificates Upgrade', () => {
     expect(matchCount).toBeGreaterThan(0);
 
     for (let i = 0; i < matchCount; i++) {
-      const nameEl = links.nth(i).locator('.font-semibold').first();
+      // div.font-semibold = customer name div; avoids matching StatusBadge span
+      const nameEl = links.nth(i).locator('div.font-semibold').first();
       const name   = (await nameEl.textContent())?.toLowerCase() ?? '';
       expect(name).toContain(query.toLowerCase());
     }
