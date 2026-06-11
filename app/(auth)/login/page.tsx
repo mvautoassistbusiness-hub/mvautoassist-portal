@@ -9,7 +9,7 @@ import { createClient } from '@/lib/supabase/client';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
+  const [login, setLogin] = useState('');   // email OR username
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -19,14 +19,20 @@ export default function LoginPage() {
   async function handleSubmit() {
     setError('');
 
-    if (!email.trim()) {
-      setError('Email is required.');
+    const loginTrimmed = login.trim();
+    if (!loginTrimmed) {
+      setError('Email or username is required.');
       return;
     }
     if (!password) {
       setError('Password is required.');
       return;
     }
+
+    // Dealers log in with username (no @); admins use their real email.
+    const email = loginTrimmed.includes('@')
+      ? loginTrimmed
+      : `${loginTrimmed}@mvautoassist.in`;
 
     setLoading(true);
     const supabase = createClient();
@@ -190,19 +196,20 @@ export default function LoginPage() {
             /* ── Sign in form ── */
             <div className="space-y-4">
 
-              {/* Email */}
+              {/* Email or username */}
               <div>
                 <label className="block text-xs font-semibold tracking-wider uppercase text-stone-500 mb-2">
-                  Email
+                  Email or Username
                 </label>
                 <div className="relative">
                   <User className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" />
                   <input
-                    type="email"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
+                    type="text"
+                    value={login}
+                    onChange={e => setLogin(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); }}
-                    placeholder="vilas@example.com"
+                    placeholder="Email or dealer username"
+                    autoComplete="username"
                     className="w-full pl-12 pr-4 py-3.5 bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-slate-900 focus:bg-white transition-all"
                   />
                 </div>
@@ -279,7 +286,13 @@ export default function LoginPage() {
             </div>
           )}
 
-          <p className="text-center text-xs text-stone-400 mt-10">
+          <p className="text-center text-sm text-stone-500 mt-8">
+            New dealer?{' '}
+            <a href="/register" className="font-semibold text-slate-900 hover:underline">
+              Register with your showroom code
+            </a>
+          </p>
+          <p className="text-center text-xs text-stone-400 mt-4">
             Shreevardhan Services · Kolhapur, Maharashtra · © 2026
           </p>
         </div>

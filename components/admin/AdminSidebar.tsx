@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   Shield, LayoutDashboard, FileText, Users,
-  IndianRupee, LogOut, Menu, X, BarChart2, Wallet,
+  IndianRupee, LogOut, Menu, X, BarChart2, Wallet, Building2,
 } from 'lucide-react';
 import { signOutUser } from '@/lib/auth/signOut';
 
@@ -13,6 +13,7 @@ const NAV = [
   { href: '/admin/dashboard',    label: 'Dashboard',    icon: LayoutDashboard },
   { href: '/admin/certificates', label: 'Certificates', icon: FileText },
   { href: '/admin/users',        label: 'Users & Roles', icon: Users },
+  { href: '/admin/showrooms',    label: 'Showrooms',     icon: Building2 },
   { href: '/admin/pricing',      label: 'Pricing Rules', icon: IndianRupee },
   { href: '/admin/payments',     label: 'Payments',     icon: Wallet },
   { href: '/admin/reports',      label: 'Reports',       icon: BarChart2 },
