@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 function isAlwaysPublic(pathname: string) {
   return (
     pathname === '/' ||
+    pathname === '/register' ||          // self-registration — no auth required
     pathname.startsWith('/api/') ||
     pathname.startsWith('/_next/') ||
     pathname === '/favicon.ico'
