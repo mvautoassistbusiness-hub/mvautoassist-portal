@@ -1,30 +1,12 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { Plus, FileText, Car, Bike } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
-import StatusBadge from '@/components/StatusBadge';
+import CertificatesGrid, { type CertCard } from '@/components/agent/CertificatesGrid';
 
 export const metadata: Metadata = {
   title: 'My Certificates · MVAutoAssist',
-};
-
-// TODO (Phase 6): Wrap certificate cards in <Link href={`/cert/${cert.id}`}>
-// Currently cards are visual only; clicking does nothing. Phase 6 will:
-//   1. Build app/cert/[id]/page.tsx placeholder
-//   2. Make these cards navigate to it
-//   3. Mirror the change on /admin/certificates and /admin/dashboard recent rows
-
-type CertCard = {
-  id: string;
-  cert_number: string;
-  customer_name: string;
-  make_model: string;
-  vehicle_type: string;
-  rsa_amount: number;
-  total_amount: number;
-  status: string;
-  end_date: string;
 };
 
 export default async function AgentCertificatesPage() {
@@ -33,21 +15,21 @@ export default async function AgentCertificatesPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  // RLS enforces agent_id = auth.uid() so no manual filter needed
+  // RLS enforces agent_id = auth.uid() — no manual filter needed
   const { data, error } = await supabase
     .from('certificates')
-    .select('id, cert_number, customer_name, make_model, vehicle_type, rsa_amount, total_amount, status, end_date')
+    .select('id, cert_number, customer_name, make_model, vehicle_type, rsa_amount, total_amount, status, end_date, payment_received')
     .order('created_at', { ascending: false });
 
   if (error) console.error('[AgentCertificates]', error);
 
   const certs = (data ?? []) as CertCard[];
 
-  // RSA revenue for subtitle (insurance excluded — only RSA is the business's revenue)
-  const activeCerts  = certs.filter(c => c.status !== 'rejected');
-  const totalRevenue = certs
+  // "Issued" = approved by admin. RSA revenue = sum of approved certs only.
+  const issuedCount = certs.filter(c => c.status === 'approved').length;
+  const rsaRevenue  = certs
     .filter(c => c.status === 'approved')
-    .reduce((s, c) => s + (c.rsa_amount ?? 0), 0);
+    .reduce((s: number, c) => s + (c.rsa_amount ?? 0), 0);
 
   return (
     <>
@@ -63,10 +45,10 @@ export default async function AgentCertificatesPage() {
               My Certificates
             </h1>
             <p className="text-sm text-stone-500 mt-1">
-              {activeCerts.length} issued
-              {totalRevenue > 0 && (
-                <> · ₹{totalRevenue.toLocaleString('en-IN')} approved RSA revenue</>
-              )}
+              {issuedCount} issued
+              {rsaRevenue > 0 && (
+                <> · ₹{rsaRevenue.toLocaleString('en-IN')} approved RSA revenue</>
+            )}
             </p>
           </div>
         </div>
@@ -80,68 +62,7 @@ export default async function AgentCertificatesPage() {
         </Link>
       </div>
 
-      <div className="p-6 lg:p-10">
-        {certs.length === 0 ? (
-          /* Empty state */
-          <div className="bg-white rounded-2xl border border-stone-200 p-16 text-center">
-            <FileText className="w-12 h-12 text-stone-300 mx-auto mb-3" />
-            <h3 className="font-semibold mb-1">No certificates yet</h3>
-            <p className="text-sm text-stone-500 mb-5">
-              Create your first RSA certificate to get started.
-            </p>
-            <Link
-              href="/agent/certificates/new"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              Create certificate
-            </Link>
-          </div>
-        ) : (
-          /* Card grid — matches demo layout */
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {certs.map(c => (
-              <Link
-                key={c.id}
-                href={`/cert/${c.id}`}
-                className="block bg-white rounded-2xl border border-stone-200 p-5 hover:shadow-md hover:-translate-y-0.5 transition-all"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="w-10 h-10 rounded-lg bg-stone-100 flex items-center justify-center shrink-0">
-                    {c.vehicle_type === 'Two Wheeler'
-                      ? <Bike className="w-5 h-5 text-stone-600" />
-                      : <Car className="w-5 h-5 text-stone-600" />}
-                  </div>
-                  <StatusBadge status={c.status} />
-                </div>
-
-                <div
-                  style={{ fontFamily: "'JetBrains Mono', monospace" }}
-                  className="text-[10px] text-stone-400 mb-1"
-                >
-                  {c.cert_number}
-                </div>
-                <div className="font-semibold mb-0.5">{c.customer_name}</div>
-                <div className="text-xs text-stone-500 mb-4">{c.make_model}</div>
-
-                <div className="flex items-center justify-between pt-3 border-t border-stone-100">
-                  <div className="text-xs text-stone-500">
-                    Valid till{' '}
-                    {c.end_date
-                      ? new Date(c.end_date).toLocaleDateString('en-IN', {
-                          day: 'numeric', month: 'short', year: 'numeric',
-                        })
-                      : '—'}
-                  </div>
-                  <div className="font-bold">
-                    ₹{(c.total_amount ?? 0).toLocaleString('en-IN')}
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
-      </div>
+      <CertificatesGrid certs={certs} />
     </>
   );
 }
