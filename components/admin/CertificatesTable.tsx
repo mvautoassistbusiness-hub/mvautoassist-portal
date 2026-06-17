@@ -43,6 +43,8 @@ export default function CertificatesTable({ certs }: { certs: CertRow[] }) {
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [paymentPendingId, setPaymentPendingId] = useState<string | null>(null);
 
+  const [exportMode, setExportMode] = useState<'flat' | 'month' | 'day'>('flat');
+
   const [, startTransition] = useTransition();
 
   // Optimistic state — handles status + payment_received changes
@@ -109,24 +111,51 @@ export default function CertificatesTable({ certs }: { certs: CertRow[] }) {
   async function handleExport() {
     setIsExporting(true);
     try {
-      const { exportToExcel } = await import('@/lib/exportToExcel');
-      const rows = filtered.map(c => ({
-        'Certificate No':   c.cert_number,
-        'Date':             new Date(c.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
-        'Customer Name':    c.customer_name,
-        'Mobile':           c.customer_mobile,
-        'Vehicle':          c.make_model,
-        'Type':             c.vehicle_type,
-        'Agent':            c.agent?.full_name ?? '—',
-        'Total Amount (₹)': c.total_amount ?? 0,
-        'Payment Method':   c.payment_method ?? '—',
-        'Payment Ref':      c.payment_reference ?? '—',
-        'Payment Received': c.payment_received ? 'Yes' : 'No',
-        'Status':           c.status,
-      }));
+      const { exportToExcel, exportToExcelGrouped } = await import('@/lib/exportToExcel');
       const today = new Date().toISOString().substring(0, 10);
-      exportToExcel(rows, `MVAutoAssist_Certificates_${today}`);
-      setSuccessToast(`Exported ${rows.length} row${rows.length !== 1 ? 's' : ''} to Excel`);
+      const filename = `MVAutoAssist_Certificates_${today}`;
+
+      function toRow(c: CertRow) {
+        return {
+          'Certificate No':   c.cert_number,
+          'Date':             new Date(c.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
+          'Customer Name':    c.customer_name,
+          'Mobile':           c.customer_mobile,
+          'Vehicle':          c.make_model,
+          'Type':             c.vehicle_type,
+          'Agent':            c.agent?.full_name ?? '—',
+          'Total Amount (₹)': c.total_amount ?? 0,
+          'Payment Method':   c.payment_method ?? '—',
+          'Payment Ref':      c.payment_reference ?? '—',
+          'Payment Received': c.payment_received ? 'Yes' : 'No',
+          'Status':           c.status,
+        };
+      }
+
+      if (exportMode === 'flat') {
+        exportToExcel(filtered.map(toRow), filename);
+      } else {
+        // Build sortKey → { label, rows } map. sortKey is ISO prefix so it
+        // sorts chronologically when we do localeCompare on the keys.
+        const grouped = new Map<string, { label: string; rows: Record<string, unknown>[] }>();
+        for (const c of filtered) {
+          const d = new Date(c.created_at);
+          const sortKey = exportMode === 'month'
+            ? d.toISOString().substring(0, 7)   // "2026-06"
+            : d.toISOString().substring(0, 10);  // "2026-06-18"
+          const label = exportMode === 'month'
+            ? d.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })         // "June 2026"
+            : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }); // "18 Jun 2026"
+          if (!grouped.has(sortKey)) grouped.set(sortKey, { label, rows: [] });
+          grouped.get(sortKey)!.rows.push(toRow(c));
+        }
+        const groups = [...grouped.entries()]
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([, g]) => g);
+        exportToExcelGrouped(groups, filename);
+      }
+
+      setSuccessToast(`Exported ${filtered.length} row${filtered.length !== 1 ? 's' : ''} to Excel`);
       setTimeout(() => setSuccessToast(null), 4000);
     } catch (err) {
       showToast(`Export failed: ${err instanceof Error ? err.message : 'Please try again.'}`);
@@ -155,14 +184,26 @@ export default function CertificatesTable({ certs }: { certs: CertRow[] }) {
             </p>
           </div>
         </div>
-        <button
-          onClick={handleExport}
-          disabled={filtered.length === 0 || isExporting}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <Download className="w-4 h-4" />
-          {isExporting ? 'Exporting…' : 'Export Excel'}
-        </button>
+        <div className="flex items-center gap-2">
+          <select
+            value={exportMode}
+            onChange={e => setExportMode(e.target.value as typeof exportMode)}
+            disabled={isExporting}
+            className="text-sm border border-stone-200 rounded-lg px-3 py-2 bg-white text-stone-700 focus:outline-none focus:border-slate-900 transition-colors disabled:opacity-50"
+          >
+            <option value="flat">Flat list</option>
+            <option value="month">By month</option>
+            <option value="day">By day</option>
+          </select>
+          <button
+            onClick={handleExport}
+            disabled={filtered.length === 0 || isExporting}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Download className="w-4 h-4" />
+            {isExporting ? 'Exporting…' : 'Export Excel'}
+          </button>
+        </div>
       </div>
 
       <div className="p-6 lg:p-10">
