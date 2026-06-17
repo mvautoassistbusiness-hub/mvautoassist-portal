@@ -15,20 +15,21 @@ export default async function AgentCertificatesPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  // RLS enforces agent_id = auth.uid() — no manual filter needed
+  // RLS now includes showroom-shared certs (Phase A). Stats are personal only.
   const { data, error } = await supabase
     .from('certificates')
-    .select('id, cert_number, customer_name, make_model, vehicle_type, rsa_amount, total_amount, status, end_date, payment_received')
+    .select('id, cert_number, customer_name, make_model, vehicle_type, rsa_amount, total_amount, status, end_date, payment_received, agent_id, agent:users!certificates_agent_id_fkey(full_name)')
     .order('created_at', { ascending: false });
 
   if (error) console.error('[AgentCertificates]', error);
 
   const certs = (data ?? []) as CertCard[];
 
-  // "Issued" = approved by admin. RSA revenue = sum of approved certs only.
-  const issuedCount = certs.filter(c => c.status === 'approved').length;
+  // Stats count only certs the current dealer personally issued
+  const myUserId    = user.id;
+  const issuedCount = certs.filter(c => c.agent_id === myUserId && c.status === 'approved').length;
   const rsaRevenue  = certs
-    .filter(c => c.status === 'approved')
+    .filter(c => c.agent_id === myUserId && c.status === 'approved')
     .reduce((s: number, c) => s + (c.rsa_amount ?? 0), 0);
 
   return (
@@ -62,7 +63,7 @@ export default async function AgentCertificatesPage() {
         </Link>
       </div>
 
-      <CertificatesGrid certs={certs} />
+      <CertificatesGrid certs={certs} myUserId={myUserId} />
     </>
   );
 }

@@ -16,6 +16,8 @@ export type CertCard = {
   status: string;
   end_date: string | null;
   payment_received: boolean;
+  agent_id: string;
+  agent: { full_name: string }[] | null;
 };
 
 type Filter = 'all' | 'pending' | 'approved' | 'payment_pending';
@@ -29,7 +31,7 @@ const FILTERS: { value: Filter; label: string }[] = [
 
 const PAGE_SIZE = 10;
 
-export default function CertificatesGrid({ certs }: { certs: CertCard[] }) {
+export default function CertificatesGrid({ certs, myUserId }: { certs: CertCard[]; myUserId: string }) {
   const [filter, setFilter] = useState<Filter>('all');
   const [search, setSearch] = useState('');
   const [page,   setPage]   = useState(0);
@@ -127,7 +129,12 @@ export default function CertificatesGrid({ certs }: { certs: CertCard[] }) {
                   {c.cert_number}
                 </div>
                 <div className="font-semibold mb-0.5">{c.customer_name}</div>
-                <div className="text-xs text-stone-500 mb-4">{c.make_model}</div>
+                <div className="text-xs text-stone-500 mb-2">{c.make_model}</div>
+                {c.agent_id !== myUserId && c.agent?.[0] && (
+                  <div className="inline-flex items-center gap-1 px-2 py-0.5 mb-2 rounded-full bg-indigo-50 border border-indigo-100 text-[10px] text-indigo-600 font-medium">
+                    by {c.agent[0].full_name}
+                  </div>
+                )}
 
                 <div className="flex items-center justify-between pt-3 border-t border-stone-100">
                   <div className="text-xs text-stone-500">
