@@ -3,6 +3,7 @@ import { MapPin } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import NewUserButton from '@/components/admin/NewUserButton';
 import EditUserButton from '@/components/admin/EditUserButton';
+import ResetPasswordButton from '@/components/admin/ResetPasswordButton';
 
 export const metadata: Metadata = {
   title: 'Users · MVAutoAssist Admin',
@@ -240,16 +241,24 @@ export default async function UsersPage() {
                         </td>
 
                         <td className="px-6 py-4 text-right">
-                          <EditUserButton
-                            userId={u.id}
-                            currentName={u.full_name}
-                            currentRole={u.role as 'admin' | 'dealer'}
-                            currentLocation={u.location}
-                            currentHelpline={helplineMap.get(u.id) ?? null}
-                            globalHelpline={globalHelpline}
-                            currentDailyLimit={limitMap.get(u.id) ?? null}
-                            globalDailyLimit={globalDailyLimit}
-                          />
+                          <div className="flex items-center justify-end gap-3">
+                            {u.role === 'dealer' && (
+                              <ResetPasswordButton
+                                userId={u.id}
+                                userName={u.full_name}
+                              />
+                            )}
+                            <EditUserButton
+                              userId={u.id}
+                              currentName={u.full_name}
+                              currentRole={u.role as 'admin' | 'dealer'}
+                              currentLocation={u.location}
+                              currentHelpline={helplineMap.get(u.id) ?? null}
+                              globalHelpline={globalHelpline}
+                              currentDailyLimit={limitMap.get(u.id) ?? null}
+                              globalDailyLimit={globalDailyLimit}
+                            />
+                          </div>
                         </td>
                       </tr>
                     );

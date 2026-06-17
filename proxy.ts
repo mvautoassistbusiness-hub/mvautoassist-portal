@@ -65,15 +65,17 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(dest);
   }
 
-  // ── 5. Fetch role (only for authenticated requests) ────────────────────────
+  // ── 5. Fetch role + password-change flag (only for authenticated requests) ──
   let role: string | undefined;
+  let mustChangePassword = false;
   try {
     const { data: profile } = await supabase
       .from('users')
-      .select('role')
+      .select('role, must_change_password')
       .eq('id', user.id)
       .single();
     role = profile?.role;
+    mustChangePassword = profile?.must_change_password ?? false;
   } catch {
     // DB unreachable — fail open
     return response;
@@ -99,7 +101,14 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(dest);
   }
 
-  // ── 8. All checks passed ───────────────────────────────────────────────────
+  // ── 8. Dealers with must_change_password must set a new password first ────
+  if (role === 'dealer' && mustChangePassword && pathname !== '/change-password') {
+    const dest = request.nextUrl.clone();
+    dest.pathname = '/change-password';
+    return NextResponse.redirect(dest);
+  }
+
+  // ── 9. All checks passed ───────────────────────────────────────────────────
   return response;
 }
 
