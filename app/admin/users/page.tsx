@@ -17,6 +17,18 @@ type UserRow = {
   role: string;
   location: string | null;
   created_at: string;
+  must_change_password: boolean;
+};
+
+type HelplineRow = {
+  user_id: string | null;
+  helpline_number: string;
+};
+
+type ApprovalSettingRow = {
+  user_id: string | null;
+  daily_limit: number;
+  is_default: boolean;
 };
 
 // ─── helper ───────────────────────────────────────────────────────────────────
@@ -35,15 +47,18 @@ function initials(name: string): string {
 export default async function UsersPage() {
   const supabase = await createClient();
 
-  // Three parallel queries — join in JS to avoid complex PostgREST hints
+  // Six parallel queries — join in JS to avoid complex PostgREST hints
   const [
     { data: rawUsers, error: e1 },
     { data: certRows, error: e2 },
     { data: tierRows, error: e3 },
+    { data: helplineRows, error: e4 },
+    { data: globalDefaultRow },
+    { data: approvalRows },
   ] = await Promise.all([
     supabase
       .from('users')
-      .select('id, email, full_name, role, location, created_at')
+      .select('id, email, full_name, role, location, created_at, must_change_password')
       .order('created_at', { ascending: true }),
 
     // Only need agent_id to count certificates per user
@@ -56,11 +71,30 @@ export default async function UsersPage() {
       .from('price_tiers')
       .select('user_id, amount')
       .order('amount', { ascending: true }),
+
+    // Per-dealer helpline overrides (user_id IS NOT NULL)
+    supabase
+      .from('helpline_settings')
+      .select('user_id, helpline_number')
+      .not('user_id', 'is', null),
+
+    // Global default helpline number for placeholder text
+    supabase
+      .from('helpline_settings')
+      .select('helpline_number')
+      .eq('is_default', true)
+      .maybeSingle(),
+
+    // All approval_settings (global default + per-dealer overrides)
+    supabase
+      .from('approval_settings')
+      .select('user_id, daily_limit, is_default'),
   ]);
 
   if (e1) console.error('[UsersPage] users:', e1);
   if (e2) console.error('[UsersPage] certs:', e2);
   if (e3) console.error('[UsersPage] tiers:', e3);
+  if (e4) console.error('[UsersPage] helplines:', e4);
 
   // Build lookup maps
   const certCount = new Map<string, number>();
@@ -73,6 +107,24 @@ export default async function UsersPage() {
     const existing = userTiers.get(t.user_id);
     if (existing) existing.push(t.amount);
     else userTiers.set(t.user_id, [t.amount]);
+  });
+
+  const helplineMap = new Map<string, string>();
+  ((helplineRows ?? []) as HelplineRow[]).forEach(h => {
+    if (h.user_id) helplineMap.set(h.user_id, h.helpline_number);
+  });
+
+  const globalHelpline = (globalDefaultRow as HelplineRow | null)?.helpline_number ?? '9307187878';
+
+  // Build approval limit maps
+  const limitMap = new Map<string, number>();
+  let globalDailyLimit = 10;
+  ((approvalRows ?? []) as ApprovalSettingRow[]).forEach(r => {
+    if (r.user_id === null && r.is_default) {
+      globalDailyLimit = r.daily_limit;
+    } else if (r.user_id) {
+      limitMap.set(r.user_id, r.daily_limit);
+    }
   });
 
   const users = (rawUsers ?? []) as UserRow[];
@@ -193,6 +245,10 @@ export default async function UsersPage() {
                             currentName={u.full_name}
                             currentRole={u.role as 'admin' | 'dealer'}
                             currentLocation={u.location}
+                            currentHelpline={helplineMap.get(u.id) ?? null}
+                            globalHelpline={globalHelpline}
+                            currentDailyLimit={limitMap.get(u.id) ?? null}
+                            globalDailyLimit={globalDailyLimit}
                           />
                         </td>
                       </tr>

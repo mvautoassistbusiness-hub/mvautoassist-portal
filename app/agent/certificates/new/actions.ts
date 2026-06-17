@@ -2,6 +2,15 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { createClient as createSBClient } from '@supabase/supabase-js';
+
+function createAdminClient() {
+  return createSBClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } },
+  );
+}
 
 // ─── shared form type ─────────────────────────────────────────────────────────
 // All fields are strings — matches what the wizard form sends.
@@ -168,6 +177,57 @@ export async function createCertificate(form: CertFormData): Promise<
 
     if (insertErr || !inserted) {
       return { ok: false, error: insertErr?.message ?? 'Certificate creation failed' };
+    }
+
+    // ── Auto-approval: check IST daily count against dealer's limit ───────────
+    // Uses service-role client so status can be set without touching payment.
+    try {
+      const admin = createAdminClient();
+
+      // IST = UTC+05:30. Compute today's window in UTC.
+      const nowMs = Date.now();
+      const istNow = new Date(nowMs + 5.5 * 60 * 60 * 1000);
+      const todayIST = istNow.toISOString().substring(0, 10); // "YYYY-MM-DD"
+      const startUTC = new Date(`${todayIST}T00:00:00.000+05:30`).toISOString();
+      const endUTC   = new Date(`${todayIST}T23:59:59.999+05:30`).toISOString();
+
+      // Count certs already issued today (excluding the one just inserted)
+      // and fetch the dealer's limit in parallel.
+      const [countResult, overrideResult, defaultResult] = await Promise.all([
+        supabase
+          .from('certificates')
+          .select('*', { count: 'exact', head: true })
+          .eq('agent_id', user.id)
+          .gte('created_at', startUTC)
+          .lte('created_at', endUTC)
+          .neq('id', inserted.id),
+        admin
+          .from('approval_settings')
+          .select('daily_limit')
+          .eq('user_id', user.id)
+          .maybeSingle(),
+        admin
+          .from('approval_settings')
+          .select('daily_limit')
+          .eq('is_default', true)
+          .maybeSingle(),
+      ]);
+
+      const prevCount  = countResult.count ?? 0;
+      const dailyLimit = overrideResult.data?.daily_limit
+        ?? defaultResult.data?.daily_limit
+        ?? 10;
+
+      if (prevCount < dailyLimit) {
+        // This cert is within the limit → auto-approve.
+        // Does NOT touch payment_received (it stays false from the INSERT).
+        await admin
+          .from('certificates')
+          .update({ status: 'approved', approved_at: new Date().toISOString() })
+          .eq('id', inserted.id);
+      }
+    } catch {
+      // Auto-approval is best-effort. Cert stays pending if anything fails.
     }
 
     revalidatePath('/agent/certificates');
