@@ -3,8 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Lock, Eye, EyeOff, Loader2, Shield } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
-import { clearMustChangePassword } from './actions';
+import { changePassword } from './actions';
 
 export default function ChangePasswordForm() {
   const router = useRouter();
@@ -28,18 +27,10 @@ export default function ChangePasswordForm() {
     }
 
     setLoading(true);
-    const supabase = createClient();
 
-    const { error: authErr } = await supabase.auth.updateUser({ password: newPwd });
-    if (authErr) {
-      setError(authErr.message);
-      setLoading(false);
-      return;
-    }
-
-    const result = await clearMustChangePassword();
+    const result = await changePassword(newPwd);
     if (!result.ok) {
-      setError(`Password changed but flag clear failed: ${result.error}. Please log out and log in again.`);
+      setError(result.error);
       setLoading(false);
       return;
     }
