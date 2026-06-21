@@ -121,7 +121,7 @@ export default function CertificatesGrid({ certs, myUserId }: { certs: CertCard[
                   </div>
                   <div className="flex items-center gap-1.5 flex-wrap justify-end">
                     <StatusBadge status={c.status} />
-                    {c.status !== 'rejected' && (
+                    {c.status === 'approved' && (
                       c.payment_received
                         ? <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
