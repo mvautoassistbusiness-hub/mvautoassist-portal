@@ -1,25 +1,13 @@
 import type { Metadata } from 'next';
-import { MapPin } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import NewUserButton from '@/components/admin/NewUserButton';
-import EditUserButton from '@/components/admin/EditUserButton';
-import ResetPasswordButton from '@/components/admin/ResetPasswordButton';
+import UsersTable, { type UserForTable } from '@/components/admin/UsersTable';
 
 export const metadata: Metadata = {
   title: 'Users · MVAutoAssist Admin',
 };
 
 // ─── types ────────────────────────────────────────────────────────────────────
-
-type UserRow = {
-  id: string;
-  email: string;
-  full_name: string;
-  role: string;
-  location: string | null;
-  created_at: string;
-  must_change_password: boolean;
-};
 
 type HelplineRow = {
   user_id: string | null;
@@ -32,23 +20,11 @@ type ApprovalSettingRow = {
   is_default: boolean;
 };
 
-// ─── helper ───────────────────────────────────────────────────────────────────
-
-function initials(name: string): string {
-  return name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map(w => w[0].toUpperCase())
-    .join('');
-}
-
 // ─── page ─────────────────────────────────────────────────────────────────────
 
 export default async function UsersPage() {
   const supabase = await createClient();
 
-  // Six parallel queries — join in JS to avoid complex PostgREST hints
   const [
     { data: rawUsers, error: e1 },
     { data: certRows, error: e2 },
@@ -56,46 +32,48 @@ export default async function UsersPage() {
     { data: helplineRows, error: e4 },
     { data: globalDefaultRow },
     { data: approvalRows },
+    { data: rawShowrooms, error: e5 },
   ] = await Promise.all([
     supabase
       .from('users')
-      .select('id, email, full_name, role, location, created_at, must_change_password')
+      .select('id, email, full_name, role, location, created_at, must_change_password, showroom_id')
       .order('created_at', { ascending: true }),
 
-    // Only need agent_id to count certificates per user
     supabase
       .from('certificates')
       .select('agent_id'),
 
-    // Price tiers ordered so chips render lowest→highest
     supabase
       .from('price_tiers')
       .select('user_id, amount')
       .order('amount', { ascending: true }),
 
-    // Per-dealer helpline overrides (user_id IS NOT NULL)
     supabase
       .from('helpline_settings')
       .select('user_id, helpline_number')
       .not('user_id', 'is', null),
 
-    // Global default helpline number for placeholder text
     supabase
       .from('helpline_settings')
       .select('helpline_number')
       .eq('is_default', true)
       .maybeSingle(),
 
-    // All approval_settings (global default + per-dealer overrides)
     supabase
       .from('approval_settings')
       .select('user_id, daily_limit, is_default'),
+
+    supabase
+      .from('showrooms')
+      .select('id, name')
+      .order('name', { ascending: true }),
   ]);
 
   if (e1) console.error('[UsersPage] users:', e1);
   if (e2) console.error('[UsersPage] certs:', e2);
   if (e3) console.error('[UsersPage] tiers:', e3);
   if (e4) console.error('[UsersPage] helplines:', e4);
+  if (e5) console.error('[UsersPage] showrooms:', e5);
 
   // Build lookup maps
   const certCount = new Map<string, number>();
@@ -117,9 +95,8 @@ export default async function UsersPage() {
 
   const globalHelpline = (globalDefaultRow as HelplineRow | null)?.helpline_number ?? '9307187878';
 
-  // Build approval limit maps
-  const limitMap = new Map<string, number>();
   let globalDailyLimit = 10;
+  const limitMap = new Map<string, number>();
   ((approvalRows ?? []) as ApprovalSettingRow[]).forEach(r => {
     if (r.user_id === null && r.is_default) {
       globalDailyLimit = r.daily_limit;
@@ -128,7 +105,24 @@ export default async function UsersPage() {
     }
   });
 
-  const users = (rawUsers ?? []) as UserRow[];
+  // Showroom lookup
+  const showroomMap = new Map<string, { id: string; name: string }>();
+  (rawShowrooms ?? []).forEach(s => showroomMap.set(s.id, { id: s.id, name: s.name }));
+  const showrooms = (rawShowrooms ?? []).map(s => ({ id: s.id as string, name: s.name as string }));
+
+  const users: UserForTable[] = ((rawUsers ?? []) as (Record<string, unknown>)[]).map(u => ({
+    id:        u.id as string,
+    email:     u.email as string,
+    full_name: u.full_name as string,
+    role:      u.role as string,
+    location:  u.location as string | null,
+    showroom:  u.showroom_id ? showroomMap.get(u.showroom_id as string) ?? null : null,
+    certCount: certCount.get(u.id as string) ?? 0,
+    prices:    userTiers.get(u.id as string) ?? [],
+    helpline:  helplineMap.get(u.id as string) ?? null,
+    dailyLimit: limitMap.get(u.id as string) ?? null,
+    must_change_password: u.must_change_password as boolean,
+  }));
 
   return (
     <>
@@ -152,122 +146,12 @@ export default async function UsersPage() {
       </div>
 
       <div className="p-6 lg:p-10">
-        <div className="bg-white rounded-2xl border border-stone-200 overflow-hidden">
-          {users.length === 0 ? (
-            <div className="py-16 text-center">
-              <p className="text-sm font-semibold text-stone-400">No users found</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-stone-50 border-b border-stone-200">
-                  <tr className="text-left text-xs uppercase tracking-wider text-stone-500">
-                    <th className="px-6 py-3 font-semibold">User</th>
-                    <th className="px-6 py-3 font-semibold hidden sm:table-cell">Role</th>
-                    <th className="px-6 py-3 font-semibold hidden md:table-cell">Location</th>
-                    <th className="px-6 py-3 font-semibold">Certificates</th>
-                    <th className="px-6 py-3 font-semibold hidden lg:table-cell">Allowed Prices</th>
-                    <th className="px-6 py-3" />
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-stone-100">
-                  {users.map(u => {
-                    const prices = userTiers.get(u.id) ?? [];
-                    const count  = certCount.get(u.id) ?? 0;
-
-                    return (
-                      <tr key={u.id} className="hover:bg-stone-50 transition-colors">
-
-                        {/* User — avatar + name + email */}
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-400 to-red-500 flex items-center justify-center font-bold text-white text-xs shrink-0">
-                              {initials(u.full_name)}
-                            </div>
-                            <div className="min-w-0">
-                              <div className="font-semibold truncate">{u.full_name}</div>
-                              <div
-                                className="text-xs text-stone-500 truncate"
-                                style={{ fontFamily: "'JetBrains Mono', monospace" }}
-                              >
-                                {u.email}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* Role badge */}
-                        <td className="px-6 py-4 hidden sm:table-cell">
-                          <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
-                            u.role === 'admin'
-                              ? 'bg-slate-900 text-white'
-                              : 'bg-amber-100 text-amber-800'
-                          }`}>
-                            {u.role}
-                          </span>
-                        </td>
-
-                        {/* Location */}
-                        <td className="px-6 py-4 hidden md:table-cell">
-                          {u.location ? (
-                            <div className="flex items-center gap-1.5 text-sm text-stone-600">
-                              <MapPin className="w-3 h-3 shrink-0" />
-                              {u.location}
-                            </div>
-                          ) : (
-                            <span className="text-stone-400 text-xs">—</span>
-                          )}
-                        </td>
-
-                        {/* Certificate count */}
-                        <td className="px-6 py-4 font-semibold">{count}</td>
-
-                        {/* Price tier chips */}
-                        <td className="px-6 py-4 hidden lg:table-cell">
-                          {prices.length > 0 ? (
-                            <div className="flex gap-1 flex-wrap">
-                              {prices.map(p => (
-                                <span
-                                  key={p}
-                                  className="text-xs px-2 py-1 rounded bg-stone-100 font-medium"
-                                >
-                                  ₹{p.toLocaleString('en-IN')}
-                                </span>
-                              ))}
-                            </div>
-                          ) : (
-                            <span className="text-stone-400 text-xs">No prices set</span>
-                          )}
-                        </td>
-
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex items-center justify-end gap-3">
-                            {u.role === 'dealer' && (
-                              <ResetPasswordButton
-                                userId={u.id}
-                                userName={u.full_name}
-                              />
-                            )}
-                            <EditUserButton
-                              userId={u.id}
-                              currentName={u.full_name}
-                              currentRole={u.role as 'admin' | 'dealer'}
-                              currentLocation={u.location}
-                              currentHelpline={helplineMap.get(u.id) ?? null}
-                              globalHelpline={globalHelpline}
-                              currentDailyLimit={limitMap.get(u.id) ?? null}
-                              globalDailyLimit={globalDailyLimit}
-                            />
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+        <UsersTable
+          users={users}
+          showrooms={showrooms}
+          globalHelpline={globalHelpline}
+          globalDailyLimit={globalDailyLimit}
+        />
       </div>
     </>
   );
