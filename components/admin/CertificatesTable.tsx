@@ -275,8 +275,10 @@ export default function CertificatesTable({ certs }: { certs: CertRow[] }) {
                           {c.cert_number}
                         </div>
                         <div className="text-xs text-stone-400 mt-0.5">
-                          {new Date(c.created_at).toLocaleDateString('en-IN', {
+                          {new Date(c.created_at).toLocaleString('en-IN', {
                             day: 'numeric', month: 'short', year: 'numeric',
+                            hour: 'numeric', minute: '2-digit', hour12: true,
+                            timeZone: 'Asia/Kolkata',
                           })}
                         </div>
                       </td>
