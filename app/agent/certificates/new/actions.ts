@@ -82,15 +82,28 @@ export async function createCertificate(form: CertFormData): Promise<
 
     if (!form.customer_name.trim() || form.customer_name.trim().length < 2)
       return { ok: false, error: 'Customer name is required (min 2 characters)' };
+    if (form.customer_name.trim().length > 60)
+      return { ok: false, error: 'Customer name too long (max 60 characters)' };
 
     if (!/^\d{10}$/.test(form.customer_mobile))
       return { ok: false, error: 'Valid 10-digit mobile number required' };
 
+    if (form.customer_dob) {
+      const dob = new Date(form.customer_dob + 'T00:00:00');
+      if (isNaN(dob.getTime()) || dob > new Date() || dob.getFullYear() < 1900)
+        return { ok: false, error: 'Date of birth is invalid (not future, after 1900)' };
+    }
+
     if (!['Two Wheeler', 'Four Wheeler'].includes(form.vehicle_type))
       return { ok: false, error: 'Invalid vehicle type' };
 
+    if (form.registration_no && form.registration_no.trim().length > 20)
+      return { ok: false, error: 'Registration number too long (max 20 characters)' };
+
     if (!form.make_model.trim() || form.make_model.trim().length < 2)
       return { ok: false, error: 'Vehicle make and model required' };
+    if (form.make_model.trim().length > 60)
+      return { ok: false, error: 'Make and model too long (max 60 characters)' };
 
     const mfgYear = parseInt(form.manufacturing_year, 10);
     if (!form.manufacturing_year || isNaN(mfgYear) || mfgYear < 1990 || mfgYear > CURRENT_YEAR)
@@ -98,11 +111,15 @@ export async function createCertificate(form: CertFormData): Promise<
 
     if (!form.engine_no.trim() || form.engine_no.trim().length < 3)
       return { ok: false, error: 'Engine number required' };
+    if (form.engine_no.trim().length > 25)
+      return { ok: false, error: 'Engine number too long (max 25 characters)' };
 
     if (!form.chassis_no.trim() || form.chassis_no.trim().length < 3)
       return { ok: false, error: 'Chassis number required' };
+    if (form.chassis_no.trim().length > 25)
+      return { ok: false, error: 'Chassis number too long (max 25 characters)' };
 
-    if (!['Petrol', 'Diesel', 'Electric', 'CNG'].includes(form.fuel_type))
+    if (!['Petrol', 'Diesel', 'Electric', 'CNG', 'Hybrid'].includes(form.fuel_type))
       return { ok: false, error: 'Invalid fuel type' };
 
     if (!form.start_date)

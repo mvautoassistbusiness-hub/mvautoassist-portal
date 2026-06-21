@@ -37,7 +37,7 @@ const INITIAL: FormState = {
 };
 
 const VEHICLE_TYPES = ['Two Wheeler', 'Four Wheeler'] as const;
-const FUEL_TYPES    = ['Petrol', 'Diesel', 'Electric', 'CNG'] as const;
+const FUEL_TYPES    = ['Petrol', 'Diesel', 'Electric', 'CNG', 'Hybrid'] as const;
 
 const PAYMENT_METHODS = ['cash', 'upi', 'card', 'cheque', 'bank_transfer'] as const;
 const PAYMENT_LABELS: Record<string, string> = {
@@ -50,8 +50,19 @@ function validateStep1(f: FormState): Errors {
   const e: Errors = {};
   if (!f.customer_name.trim() || f.customer_name.trim().length < 2)
     e.customer_name = 'Name is required';
+  else if (f.customer_name.trim().length > 60)
+    e.customer_name = 'Name is too long (max 60 characters)';
   if (!/^\d{10}$/.test(f.customer_mobile))
     e.customer_mobile = 'Enter a valid 10-digit mobile';
+  if (f.customer_dob) {
+    const dob = new Date(f.customer_dob + 'T00:00:00');
+    if (isNaN(dob.getTime()) || dob > new Date() || dob.getFullYear() < 1900)
+      e.customer_dob = 'Enter a valid date of birth (not in the future, after 1900)';
+  }
+  if (f.customer_email && f.customer_email.length > 100)
+    e.customer_email = 'Email is too long (max 100 characters)';
+  if (f.customer_address && f.customer_address.length > 300)
+    e.customer_address = 'Address is too long (max 300 characters)';
   return e;
 }
 
@@ -60,15 +71,31 @@ function validateStep2(f: FormState): Errors {
   const currentYear = new Date().getFullYear();
   if (!(VEHICLE_TYPES as readonly string[]).includes(f.vehicle_type))
     e.vehicle_type = 'Select a vehicle type';
+  if (f.registration_no && f.registration_no.trim().length > 20)
+    e.registration_no = 'Registration no too long (max 20 characters)';
+  else if (f.registration_no && /[\n\r]/.test(f.registration_no))
+    e.registration_no = 'Registration no must not contain line breaks';
   if (!f.make_model.trim() || f.make_model.trim().length < 2)
     e.make_model = 'Vehicle make and model required';
+  else if (f.make_model.trim().length > 60)
+    e.make_model = 'Make & model too long (max 60 characters)';
+  if (f.variant && f.variant.trim().length > 60)
+    e.variant = 'Variant too long (max 60 characters)';
   const yr = parseInt(f.manufacturing_year, 10);
   if (!f.manufacturing_year || isNaN(yr) || yr < 1990 || yr > currentYear)
     e.manufacturing_year = `Enter a valid manufacturing year (1990–${currentYear})`;
   if (!f.engine_no.trim() || f.engine_no.trim().length < 3)
-    e.engine_no = 'Engine number required';
+    e.engine_no = 'Engine number required (min 3 characters)';
+  else if (f.engine_no.trim().length > 25)
+    e.engine_no = 'Engine number too long (max 25 characters)';
+  else if (/[\n\r]/.test(f.engine_no))
+    e.engine_no = 'Engine number must not contain line breaks';
   if (!f.chassis_no.trim() || f.chassis_no.trim().length < 3)
-    e.chassis_no = 'Chassis number required';
+    e.chassis_no = 'Chassis number required (min 3 characters)';
+  else if (f.chassis_no.trim().length > 25)
+    e.chassis_no = 'Chassis number too long (max 25 characters)';
+  else if (/[\n\r]/.test(f.chassis_no))
+    e.chassis_no = 'Chassis number must not contain line breaks';
   if (!(FUEL_TYPES as readonly string[]).includes(f.fuel_type))
     e.fuel_type = 'Select a fuel type';
   return e;
@@ -90,6 +117,8 @@ function validateStep3(f: FormState, tiers: { amount: number; is_default: boolea
     e.rsa_amount = 'Selected tier is not assigned to your account';
   if (!(PAYMENT_METHODS as readonly string[]).includes(f.payment_method))
     e.payment_method = 'Select a payment method';
+  if (f.payment_reference && f.payment_reference.length > 60)
+    e.payment_reference = 'Reference too long (max 60 characters)';
   return e;
 }
 
@@ -237,11 +266,11 @@ export default function NewCertificateWizard() {
                 error={errors.customer_name}
               />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field label="Date of birth (optional)" type="date" value={form.customer_dob} onChange={v => update('customer_dob', v)} />
+                <Field label="Date of birth (optional)" type="date" value={form.customer_dob} onChange={v => update('customer_dob', v)} error={errors.customer_dob} />
                 <Field label="Mobile number" value={form.customer_mobile} onChange={v => update('customer_mobile', v)} placeholder="10-digit mobile number" error={errors.customer_mobile} />
               </div>
-              <Field label="Email (optional)" type="email" value={form.customer_email} onChange={v => update('customer_email', v)} placeholder="customer@example.com" />
-              <Field label="Address (optional)" value={form.customer_address} onChange={v => update('customer_address', v)} placeholder="Full postal address" textarea />
+              <Field label="Email (optional)" type="email" value={form.customer_email} onChange={v => update('customer_email', v)} placeholder="customer@example.com" error={errors.customer_email} />
+              <Field label="Address (optional)" value={form.customer_address} onChange={v => update('customer_address', v)} placeholder="Full postal address" textarea error={errors.customer_address} />
             </div>
           </div>
         )}
@@ -268,11 +297,11 @@ export default function NewCertificateWizard() {
                 {errors.vehicle_type && <p className="mt-1.5 text-xs text-red-600 font-medium">{errors.vehicle_type}</p>}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field label="Registration no (optional)" value={form.registration_no} onChange={v => update('registration_no', v)} placeholder="MH09 AB 1234 or 'New'" />
+                <Field label="Registration no (optional)" value={form.registration_no} onChange={v => update('registration_no', v)} placeholder="MH09 AB 1234 or 'New'" error={errors.registration_no} />
                 <Field label="Make & Model" value={form.make_model} onChange={v => update('make_model', v)} placeholder="HONDA CB350RS" error={errors.make_model} />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field label="Variant" value={form.variant} onChange={v => update('variant', v)} placeholder="DLX PRO DUAL TONE" />
+                <Field label="Variant" value={form.variant} onChange={v => update('variant', v)} placeholder="DLX PRO DUAL TONE" error={errors.variant} />
                 <Field label="Manufacturing year" value={form.manufacturing_year} onChange={v => update('manufacturing_year', v)} placeholder="2025" error={errors.manufacturing_year} />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -433,6 +462,7 @@ export default function NewCertificateWizard() {
                   value={form.payment_reference}
                   onChange={v => update('payment_reference', v)}
                   placeholder="e.g. UPI ref no, cheque no, bank ref…"
+                  error={errors.payment_reference}
                 />
 
               </div>

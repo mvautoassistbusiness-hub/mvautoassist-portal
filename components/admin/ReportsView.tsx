@@ -59,16 +59,23 @@ export default function ReportsView({ certs, agents }: { certs: ReportCert[]; ag
   const [selectedAgent,  setSelectedAgent]  = useState('');
   const [exportToast,    setExportToast]    = useState<string | null>(null);
 
+  const dateRangeError = dateFrom && dateTo && dateFrom > dateTo
+    ? 'Start date must be on or before end date'
+    : null;
+
   function showExportToast(msg: string) {
     setExportToast(msg);
     setTimeout(() => setExportToast(null), 4000);
   }
 
   // ── filtered by date range ───────────────────────────────────────────────────
-  const datFiltered = useMemo(() => certs.filter(c => {
-    const d = toDateStr(c.created_at);
-    return d >= dateFrom && d <= dateTo;
-  }), [certs, dateFrom, dateTo]);
+  const datFiltered = useMemo(() => {
+    if (dateRangeError) return [];
+    return certs.filter(c => {
+      const d = toDateStr(c.created_at);
+      return d >= dateFrom && d <= dateTo;
+    });
+  }, [certs, dateFrom, dateTo, dateRangeError]);
 
   // ── summary totals ───────────────────────────────────────────────────────────
   const totalCerts   = datFiltered.length;
@@ -193,9 +200,14 @@ export default function ReportsView({ certs, agents }: { certs: ReportCert[]; ag
               type="date"
               value={dateTo}
               onChange={e => setDateTo(e.target.value)}
-              className="px-3 py-2.5 border border-stone-200 rounded-lg text-sm focus:outline-none focus:border-slate-900 transition-colors bg-white"
+              className={`px-3 py-2.5 border rounded-lg text-sm focus:outline-none transition-colors bg-white ${
+                dateRangeError ? 'border-red-300 focus:border-red-500' : 'border-stone-200 focus:border-slate-900'
+              }`}
             />
           </div>
+          {dateRangeError && (
+            <p className="text-xs text-red-600 font-medium self-end pb-2">{dateRangeError}</p>
+          )}
         </div>
 
         {/* ── Summary cards ─────────────────────────────────────────────────── */}

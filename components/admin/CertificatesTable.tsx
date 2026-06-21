@@ -331,8 +331,8 @@ export default function CertificatesTable({ certs }: { certs: CertRow[] }) {
                           {c.payment_method && (
                             <button
                               onClick={() => handlePaymentReceived(c.id, !c.payment_received)}
-                              disabled={paymentPendingId !== null || pendingId !== null}
-                              title={c.payment_received ? 'Unmark payment received' : 'Mark payment received'}
+                              disabled={paymentPendingId !== null || pendingId !== null || c.status === 'rejected'}
+                              title={c.status === 'rejected' ? 'Payment cannot be confirmed on rejected certificates' : c.payment_received ? 'Unmark payment received' : 'Mark payment received'}
                               className={`p-1.5 rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
                                 paymentPendingId === c.id ? 'opacity-40 cursor-wait' : ''
                               } ${

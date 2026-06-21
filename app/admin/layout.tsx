@@ -23,7 +23,9 @@ export default async function AdminLayout({
     .eq('id', user.id)
     .single();
 
-  if (!profile || profile.role !== 'admin') redirect('/login');
+  if (!profile || profile.role !== 'admin') {
+    redirect(profile?.role === 'dealer' ? '/agent/certificates' : '/login');
+  }
 
   return (
     <div
