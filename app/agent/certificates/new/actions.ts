@@ -139,6 +139,27 @@ export async function createCertificate(form: CertFormData): Promise<
 
     const total_amount = insuranceAmt + rsaAmt;
 
+    // ── Dedupe guard: if same dealer + engine + chassis was inserted in the
+    //    last 2 minutes, treat it as a duplicate submit (double-click / refresh)
+    //    and return the existing cert instead of burning another cert number.
+    const { data: recentDup } = await supabase
+      .from('certificates')
+      .select('id, cert_number')
+      .eq('agent_id', user.id)
+      .eq('engine_no', form.engine_no.trim())
+      .eq('chassis_no', form.chassis_no.trim())
+      .neq('status', 'rejected')
+      .gte('created_at', new Date(Date.now() - 2 * 60 * 1000).toISOString())
+      .limit(1)
+      .maybeSingle();
+
+    if (recentDup) {
+      revalidatePath('/agent/certificates');
+      revalidatePath('/admin/certificates');
+      revalidatePath('/admin/dashboard');
+      return { ok: true, certId: recentDup.id, certNumber: recentDup.cert_number };
+    }
+
     const { data: certNumber, error: rpcError } = await supabase.rpc('generate_cert_number');
     if (rpcError || !certNumber) {
       return { ok: false, error: 'Failed to generate certificate number' };

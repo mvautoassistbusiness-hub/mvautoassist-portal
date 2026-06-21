@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChevronRight, Bike, Car } from 'lucide-react';
+import { ChevronRight, Bike, Car, Loader2 } from 'lucide-react';
 import Field from '@/components/agent/Field';
 import { getDealerPriceTiers, createCertificate } from './actions';
 import type { CertFormData } from './actions';
@@ -109,6 +109,7 @@ export default function NewCertificateWizard() {
   // Step 3 — submission
   const [submitting,   setSubmitting]   = useState(false);
   const [submitError,  setSubmitError]  = useState<string | null>(null);
+  const submittingRef = useRef(false);
 
   // Prefetch dealer's price tiers on mount so Step 3 is ready immediately
   useEffect(() => {
@@ -143,6 +144,8 @@ export default function NewCertificateWizard() {
     if (step === 3) {
       const errs = validateStep3(form, tiers ?? []);
       if (Object.keys(errs).length) { setErrors(errs); return; }
+      if (submittingRef.current) return;
+      submittingRef.current = true;
       setErrors({});
       setSubmitError(null);
       setSubmitting(true);
@@ -152,8 +155,11 @@ export default function NewCertificateWizard() {
           router.replace(`/cert/${result.certId}`);
         } else {
           setSubmitError(result.error);
+          submittingRef.current = false;
+          setSubmitting(false);
         }
-      } finally {
+      } catch {
+        submittingRef.current = false;
         setSubmitting(false);
       }
     }
@@ -450,8 +456,9 @@ export default function NewCertificateWizard() {
             disabled={submitting || (step === 3 && tiers !== null && tiers.length === 0)}
             className="ml-auto flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           >
+            {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
             {submitting
-              ? 'Generating…'
+              ? 'Submitting…'
               : step < 3
                 ? 'Continue'
                 : 'Generate certificate'}
