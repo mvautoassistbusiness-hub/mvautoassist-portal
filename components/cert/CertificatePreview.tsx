@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { Shield, ChevronRight, Printer, Download } from 'lucide-react';
+import StatusBadge from '@/components/StatusBadge';
 
 export type CertData = {
   id: string;
@@ -28,6 +29,7 @@ export type CertData = {
   agent_id: string;
   payment_method: string | null;
   payment_reference: string | null;
+  payment_received: boolean;
 };
 
 export type AgentData = {
@@ -84,6 +86,20 @@ export default function CertificatePreview({ cert, agent, helpline, backHref }: 
         >
           <ChevronRight className="w-4 h-4 rotate-180" /> Back
         </Link>
+        <div className="flex items-center gap-1.5">
+          <StatusBadge status={cert.status} />
+          {cert.status !== 'rejected' && (
+            cert.payment_received
+              ? <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  Paid
+                </span>
+              : <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                  Payment Pending
+                </span>
+          )}
+        </div>
         <div className="flex gap-2">
           <button
             onClick={() => window.print()}

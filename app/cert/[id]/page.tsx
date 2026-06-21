@@ -63,7 +63,7 @@ export default async function CertPage({
       start_date, end_date,
       insurance_amount, rsa_amount, total_amount,
       status, agent_id,
-      payment_method, payment_reference
+      payment_method, payment_reference, payment_received
     `)
     .eq('id', id)
     .single();
