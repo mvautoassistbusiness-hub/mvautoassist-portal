@@ -66,9 +66,9 @@ function validateRegistrationNo(raw: string): string | null {
 function validateChassisNo(raw: string): string | null {
   const v = raw.trim().toUpperCase();
   if (!v) return 'Chassis number (VIN) is required';
-  if (v.length !== 17) return `Chassis number (VIN) must be exactly 17 characters (entered ${v.length})`;
-  if (/[IOQ]/.test(v)) return 'Letters I, O, Q are not used in VINs';
-  if (!/^[A-HJ-NPR-Z0-9]{17}$/.test(v)) return 'Chassis number must be alphanumeric only';
+  if (v.length < 9 || v.length > 17) return `Chassis number must be 9–17 characters (entered ${v.length})`;
+  if (/[IOQ]/.test(v)) return 'Letters I, O, Q are not valid in chassis numbers';
+  if (!/^[A-HJ-NPR-Z0-9]+$/.test(v)) return 'Chassis number must be alphanumeric only';
   return null;
 }
 
