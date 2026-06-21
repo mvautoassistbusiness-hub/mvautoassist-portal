@@ -12,10 +12,11 @@ export default async function PricingPage() {
   const [
     { data: rawDealers, error: e1 },
     { data: tierRows,   error: e2 },
+    { data: rawShowrooms, error: e3 },
   ] = await Promise.all([
     supabase
       .from('users')
-      .select('id, full_name, location')
+      .select('id, full_name, location, showroom_id')
       .eq('role', 'dealer')
       .order('full_name', { ascending: true }),
 
@@ -23,10 +24,16 @@ export default async function PricingPage() {
       .from('price_tiers')
       .select('id, user_id, amount, is_default')
       .order('amount', { ascending: true }),
+
+    supabase
+      .from('showrooms')
+      .select('id, name')
+      .order('name', { ascending: true }),
   ]);
 
   if (e1) console.error('[PricingPage] dealers:', e1);
   if (e2) console.error('[PricingPage] tiers:', e2);
+  if (e3) console.error('[PricingPage] showrooms:', e3);
 
   // Group tiers by dealer
   const tiersByUser = new Map<string, { id: string; amount: number; is_default: boolean }[]>();
@@ -36,10 +43,18 @@ export default async function PricingPage() {
     tiersByUser.set(t.user_id, entry);
   });
 
+  // Showroom lookup
+  const showroomMap = new Map<string, string>();
+  (rawShowrooms ?? []).forEach(s => showroomMap.set(s.id, s.name));
+  const showrooms = (rawShowrooms ?? []).map(s => ({ id: s.id as string, name: s.name as string }));
+
   const dealers: DealerWithPrices[] = (rawDealers ?? []).map(d => ({
     id:        d.id,
     full_name: d.full_name,
     location:  d.location,
+    showroom:  d.showroom_id && showroomMap.has(d.showroom_id)
+      ? { id: d.showroom_id, name: showroomMap.get(d.showroom_id)! }
+      : null,
     tiers:     tiersByUser.get(d.id) ?? [],
   }));
 
@@ -64,7 +79,7 @@ export default async function PricingPage() {
       </div>
 
       <div className="p-6 lg:p-10">
-        <PricingAssignments dealers={dealers} />
+        <PricingAssignments dealers={dealers} showrooms={showrooms} />
       </div>
     </>
   );

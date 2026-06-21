@@ -15,6 +15,7 @@ export type DealerWithPrices = {
   id: string;
   full_name: string;
   location: string | null;
+  showroom: { id: string; name: string } | null;
   tiers: { id: string; amount: number; is_default: boolean }[];
 };
 
@@ -35,13 +36,16 @@ function fmt(amount: number): string {
 
 // ─── component ───────────────────────────────────────────────────────────────
 
-export default function PricingAssignments({ dealers }: { dealers: DealerWithPrices[] }) {
+export default function PricingAssignments({ dealers, showrooms }: { dealers: DealerWithPrices[]; showrooms: { id: string; name: string }[] }) {
   const [, startTransition] = useTransition();
 
   // Mutation guards — one of each type at a time
   const [pendingKey,    setPendingKey]    = useState<string | null>(null);
   const [defaultPending, setDefaultPending] = useState<string | null>(null);
   const [addPendingId,  setAddPendingId]  = useState<string | null>(null);
+
+  // Showroom filter
+  const [showroomFilter, setShowroomFilter] = useState('all');
 
   // Per-dealer "add" input state
   const [addInputs, setAddInputs] = useState<Record<string, string>>({});
@@ -142,18 +146,39 @@ export default function PricingAssignments({ dealers }: { dealers: DealerWithPri
   return (
     <>
       <div className="bg-white rounded-2xl border border-stone-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-stone-100">
-          <h3 className="font-semibold">Per-Dealer Price Tiers</h3>
-          <p className="text-xs text-stone-500 mt-0.5">
-            Assign any RSA price between ₹500 and ₹5,000 to each dealer
-          </p>
+        <div className="px-6 py-4 border-b border-stone-100 flex items-start justify-between gap-4">
+          <div>
+            <h3 className="font-semibold">Per-Dealer Price Tiers</h3>
+            <p className="text-xs text-stone-500 mt-0.5">
+              Assign any RSA price between ₹500 and ₹5,000 to each dealer
+            </p>
+          </div>
+          <select
+            value={showroomFilter}
+            onChange={e => setShowroomFilter(e.target.value)}
+            className="px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:border-slate-900 transition-colors bg-white shrink-0"
+          >
+            <option value="all">All showrooms</option>
+            {showrooms.map(s => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+            <option value="unassigned">Unassigned</option>
+          </select>
         </div>
 
-        {optimisticDealers.length === 0 ? (
-          <div className="py-12 text-center text-sm text-stone-400">No dealers found</div>
-        ) : (
+        {(() => {
+          const filteredDealers = optimisticDealers.filter(d => {
+            if (showroomFilter === 'all') return true;
+            if (showroomFilter === 'unassigned') return !d.showroom;
+            return d.showroom?.id === showroomFilter;
+          });
+          return filteredDealers.length === 0 ? (
+            <div className="py-12 text-center text-sm text-stone-400">
+              {showroomFilter === 'all' ? 'No dealers found' : 'No dealers in this showroom'}
+            </div>
+          ) : (
           <div className="divide-y divide-stone-100">
-            {optimisticDealers.map(d => {
+            {filteredDealers.map(d => {
               const sorted = [...d.tiers].sort((a, b) => a.amount - b.amount);
               const isAddPending = addPendingId === d.id;
 
@@ -167,7 +192,10 @@ export default function PricingAssignments({ dealers }: { dealers: DealerWithPri
                     </div>
                     <div>
                       <div className="font-semibold text-sm">{d.full_name}</div>
-                      <div className="text-xs text-stone-500">{d.location ?? 'No location set'}</div>
+                      <div className="text-xs text-stone-500">
+                        {d.showroom?.name ?? 'No showroom'}
+                        {d.location && <> · {d.location}</>}
+                      </div>
                     </div>
                   </div>
 
@@ -275,7 +303,8 @@ export default function PricingAssignments({ dealers }: { dealers: DealerWithPri
               );
             })}
           </div>
-        )}
+          );
+        })()}
       </div>
 
       {/* Error toast */}
