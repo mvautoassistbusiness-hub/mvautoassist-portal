@@ -44,6 +44,44 @@ const PAYMENT_LABELS: Record<string, string> = {
   cash: 'Cash', upi: 'UPI', card: 'Card', cheque: 'Cheque', bank_transfer: 'Bank Transfer',
 };
 
+// ─── India-format vehicle field validation ───────────────────────────────────
+
+const INDIAN_STATE_CODES = new Set([
+  'AP','AR','AS','BR','CG','GA','GJ','HR','HP','JH','KA','KL','MP','MH',
+  'MN','ML','MZ','NL','OD','PB','RJ','SK','TN','TS','TR','UP','UK','WB',
+  'AN','CH','DD','DL','JK','LA','LD','PY',
+]);
+
+function validateRegistrationNo(raw: string): string | null {
+  const v = raw.replace(/[\s\-\.]/g, '').toUpperCase();
+  if (!v || v === 'NEW') return null;
+  if (v.length > 20) return 'Registration no too long (max 20 characters)';
+  if (/^\d{2}BH\d{4}[A-Z]{1,2}$/.test(v)) return null;
+  const m = v.match(/^([A-Z]{2})(\d{1,2})([A-Z]{1,3})(\d{1,4})$/);
+  if (!m) return 'Invalid format, e.g. MH12AB1234 or DL8CAF5169';
+  if (!INDIAN_STATE_CODES.has(m[1])) return `Unknown state code "${m[1]}"`;
+  return null;
+}
+
+function validateChassisNo(raw: string): string | null {
+  const v = raw.trim().toUpperCase();
+  if (!v) return 'Chassis number (VIN) is required';
+  if (v.length !== 17) return `Chassis number (VIN) must be exactly 17 characters (entered ${v.length})`;
+  if (/[IOQ]/.test(v)) return 'Letters I, O, Q are not used in VINs';
+  if (!/^[A-HJ-NPR-Z0-9]{17}$/.test(v)) return 'Chassis number must be alphanumeric only';
+  return null;
+}
+
+function validateEngineNo(raw: string): string | null {
+  const v = raw.trim();
+  if (!v) return 'Engine number is required';
+  if (v.length < 5) return 'Engine number too short (min 5 characters)';
+  if (v.length > 25) return 'Engine number too long (max 25 characters)';
+  if (!/^[A-Za-z0-9][A-Za-z0-9\-\/]*[A-Za-z0-9]$/.test(v))
+    return 'Engine number must be alphanumeric (hyphens/slashes allowed, no spaces)';
+  return null;
+}
+
 // ─── validation ───────────────────────────────────────────────────────────────
 
 function validateStep1(f: FormState): Errors {
@@ -71,10 +109,10 @@ function validateStep2(f: FormState): Errors {
   const currentYear = new Date().getFullYear();
   if (!(VEHICLE_TYPES as readonly string[]).includes(f.vehicle_type))
     e.vehicle_type = 'Select a vehicle type';
-  if (f.registration_no && f.registration_no.trim().length > 20)
-    e.registration_no = 'Registration no too long (max 20 characters)';
-  else if (f.registration_no && /[\n\r]/.test(f.registration_no))
-    e.registration_no = 'Registration no must not contain line breaks';
+  if (f.registration_no.trim()) {
+    const regErr = validateRegistrationNo(f.registration_no);
+    if (regErr) e.registration_no = regErr;
+  }
   if (!f.make_model.trim() || f.make_model.trim().length < 2)
     e.make_model = 'Vehicle make and model required';
   else if (f.make_model.trim().length > 60)
@@ -84,18 +122,10 @@ function validateStep2(f: FormState): Errors {
   const yr = parseInt(f.manufacturing_year, 10);
   if (!f.manufacturing_year || isNaN(yr) || yr < 1990 || yr > currentYear)
     e.manufacturing_year = `Enter a valid manufacturing year (1990–${currentYear})`;
-  if (!f.engine_no.trim() || f.engine_no.trim().length < 3)
-    e.engine_no = 'Engine number required (min 3 characters)';
-  else if (f.engine_no.trim().length > 25)
-    e.engine_no = 'Engine number too long (max 25 characters)';
-  else if (/[\n\r]/.test(f.engine_no))
-    e.engine_no = 'Engine number must not contain line breaks';
-  if (!f.chassis_no.trim() || f.chassis_no.trim().length < 3)
-    e.chassis_no = 'Chassis number required (min 3 characters)';
-  else if (f.chassis_no.trim().length > 25)
-    e.chassis_no = 'Chassis number too long (max 25 characters)';
-  else if (/[\n\r]/.test(f.chassis_no))
-    e.chassis_no = 'Chassis number must not contain line breaks';
+  const engineErr = validateEngineNo(f.engine_no);
+  if (engineErr) e.engine_no = engineErr;
+  const chassisErr = validateChassisNo(f.chassis_no);
+  if (chassisErr) e.chassis_no = chassisErr;
   if (!(FUEL_TYPES as readonly string[]).includes(f.fuel_type))
     e.fuel_type = 'Select a fuel type';
   return e;

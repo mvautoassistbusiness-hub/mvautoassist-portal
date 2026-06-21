@@ -38,6 +38,44 @@ export type CertFormData = {
   payment_reference: string;  // optional free text
 };
 
+// ─── India-format vehicle field validation ───────────────────────────────────
+
+const INDIAN_STATE_CODES = new Set([
+  'AP','AR','AS','BR','CG','GA','GJ','HR','HP','JH','KA','KL','MP','MH',
+  'MN','ML','MZ','NL','OD','PB','RJ','SK','TN','TS','TR','UP','UK','WB',
+  'AN','CH','DD','DL','JK','LA','LD','PY',
+]);
+
+function validateRegNo(raw: string): string | null {
+  const v = raw.replace(/[\s\-\.]/g, '').toUpperCase();
+  if (!v || v === 'NEW') return null;
+  if (v.length > 20) return 'Registration number too long (max 20 characters)';
+  if (/^\d{2}BH\d{4}[A-Z]{1,2}$/.test(v)) return null;
+  const m = v.match(/^([A-Z]{2})(\d{1,2})([A-Z]{1,3})(\d{1,4})$/);
+  if (!m) return 'Invalid registration format, e.g. MH12AB1234 or DL8CAF5169';
+  if (!INDIAN_STATE_CODES.has(m[1])) return `Unknown state code "${m[1]}"`;
+  return null;
+}
+
+function validateVIN(raw: string): string | null {
+  const v = raw.trim().toUpperCase();
+  if (!v) return 'Chassis number (VIN) is required';
+  if (v.length !== 17) return `Chassis number (VIN) must be exactly 17 characters (entered ${v.length})`;
+  if (/[IOQ]/.test(v)) return 'Letters I, O, Q are not used in VINs';
+  if (!/^[A-HJ-NPR-Z0-9]{17}$/.test(v)) return 'Chassis number must be alphanumeric only';
+  return null;
+}
+
+function validateEngNo(raw: string): string | null {
+  const v = raw.trim();
+  if (!v) return 'Engine number is required';
+  if (v.length < 5) return 'Engine number too short (min 5 characters)';
+  if (v.length > 25) return 'Engine number too long (max 25 characters)';
+  if (!/^[A-Za-z0-9][A-Za-z0-9\-\/]*[A-Za-z0-9]$/.test(v))
+    return 'Engine number must be alphanumeric (hyphens/slashes allowed, no spaces)';
+  return null;
+}
+
 // ─── getDealerPriceTiers ──────────────────────────────────────────────────────
 
 export async function getDealerPriceTiers(): Promise<
@@ -97,8 +135,10 @@ export async function createCertificate(form: CertFormData): Promise<
     if (!['Two Wheeler', 'Four Wheeler'].includes(form.vehicle_type))
       return { ok: false, error: 'Invalid vehicle type' };
 
-    if (form.registration_no && form.registration_no.trim().length > 20)
-      return { ok: false, error: 'Registration number too long (max 20 characters)' };
+    if (form.registration_no && form.registration_no.trim()) {
+      const regErr = validateRegNo(form.registration_no);
+      if (regErr) return { ok: false, error: regErr };
+    }
 
     if (!form.make_model.trim() || form.make_model.trim().length < 2)
       return { ok: false, error: 'Vehicle make and model required' };
@@ -109,15 +149,11 @@ export async function createCertificate(form: CertFormData): Promise<
     if (!form.manufacturing_year || isNaN(mfgYear) || mfgYear < 1990 || mfgYear > CURRENT_YEAR)
       return { ok: false, error: `Manufacturing year must be between 1990 and ${CURRENT_YEAR}` };
 
-    if (!form.engine_no.trim() || form.engine_no.trim().length < 3)
-      return { ok: false, error: 'Engine number required' };
-    if (form.engine_no.trim().length > 25)
-      return { ok: false, error: 'Engine number too long (max 25 characters)' };
+    const engErr = validateEngNo(form.engine_no);
+    if (engErr) return { ok: false, error: engErr };
 
-    if (!form.chassis_no.trim() || form.chassis_no.trim().length < 3)
-      return { ok: false, error: 'Chassis number required' };
-    if (form.chassis_no.trim().length > 25)
-      return { ok: false, error: 'Chassis number too long (max 25 characters)' };
+    const vinErr = validateVIN(form.chassis_no);
+    if (vinErr) return { ok: false, error: vinErr };
 
     if (!['Petrol', 'Diesel', 'Electric', 'CNG', 'Hybrid'].includes(form.fuel_type))
       return { ok: false, error: 'Invalid fuel type' };
